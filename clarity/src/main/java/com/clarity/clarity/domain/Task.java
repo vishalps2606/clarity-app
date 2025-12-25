@@ -2,6 +2,7 @@ package com.clarity.clarity.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
@@ -34,4 +35,10 @@ public class Task {
 
     @Column(nullable = false)
     private boolean needsReview = false;
+
+    @Column(length = 500)
+    private String reviewNote;
+
+    @Enumerated(EnumType.STRING)
+    private TaskReviewDecision reviewDecision;
 }

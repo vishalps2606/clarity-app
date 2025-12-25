@@ -1,0 +1,8 @@
+ALTER TABLE tasks
+ADD COLUMN needs_review BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE tasks
+ADD COLUMN review_note VARCHAR(500);
+
+ALTER TABLE tasks
+ADD COLUMN review_decision VARCHAR(50);
