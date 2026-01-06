@@ -3,6 +3,7 @@ package com.clarity.clarity.scheduler;
 import com.clarity.clarity.domain.TaskStatus;
 import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.repository.TaskRepository;
+import com.clarity.clarity.service.TaskActivityLogService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ import java.util.List;
 public class OverdueTaskScheduler {
 
     private final TaskRepository taskRepository;
+    private final TaskActivityLogService taskActivityLogService;
 
     // Runs every day at 00:10
     @Scheduled(cron = "0 10 0 * * *")
@@ -46,6 +49,15 @@ public class OverdueTaskScheduler {
                     task.getId(),
                     task.getTitle(),
                     task.getDueDatetime()
+            );
+
+            taskActivityLogService.log(
+                    task.getId(),
+                    "TASK_FLAGGED_FOR_REVIEW",
+                    "SYSTEM",
+                    Map.of(
+                            "dueDatetime", task.getDueDatetime()
+                    )
             );
         }
     }

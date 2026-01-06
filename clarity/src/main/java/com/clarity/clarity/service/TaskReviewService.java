@@ -10,12 +10,14 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class TaskReviewService {
 
     private final TaskRepository taskRepository;
+    private final TaskActivityLogService taskActivityLogService;
 
     @Transactional
     public void reviewOverdueTasks() {
@@ -28,11 +30,27 @@ public class TaskReviewService {
 
         for (Task task : overdueTasks) {
 
+            TaskStatus oldStatus = task.getStatus();
+            boolean oldNeedsReview = task.isNeedsReview();
+
             if (task.getStatus() == TaskStatus.READY) {
                 task.setStatus(TaskStatus.SKIPPED);
             } else if (task.getStatus() == TaskStatus.IN_PROGRESS) {
                 task.setNeedsReview(true);
             }
+
+            taskActivityLogService.log(
+                    task.getId(),
+                    "TASK_MARKED_OVERDUE",
+                    "SYSTEM",
+                    Map.of(
+                            "oldStatus", oldStatus,
+                            "newStatus", task.getStatus(),
+                            "oldNeedsReview", oldNeedsReview,
+                            "newNeedsReview", task.isNeedsReview(),
+                            "dueDatetime", task.getDueDatetime()
+                    )
+            );
         }
 
         taskRepository.saveAll(overdueTasks);

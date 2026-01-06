@@ -3,6 +3,7 @@ package com.clarity.clarity.scheduler;
 import com.clarity.clarity.entity.Reminder;
 import com.clarity.clarity.domain.ReminderStatus;
 import com.clarity.clarity.repository.ReminderRepository;
+import com.clarity.clarity.service.TaskActivityLogService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ import java.util.List;
 public class ReminderScheduler {
 
     private final ReminderRepository reminderRepository;
+    private final TaskActivityLogService taskActivityLogService;
 
     @Scheduled(fixedRate = 60_000) // every 1 minute
     @Transactional
@@ -48,5 +51,15 @@ public class ReminderScheduler {
         );
 
         reminder.setStatus(ReminderStatus.SENT);
+
+        taskActivityLogService.log(
+                reminder.getTask().getId(),
+                "REMINDER_FIRED",
+                "SYSTEM",
+                Map.of(
+                        "remindAt", reminder.getRemindAt()
+                )
+        );
+
     }
 }

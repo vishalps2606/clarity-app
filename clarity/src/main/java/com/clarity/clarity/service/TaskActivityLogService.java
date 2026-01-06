@@ -1,6 +1,6 @@
 package com.clarity.clarity.service;
 
-import com.clarity.clarity.domain.TaskActivityLog;
+import com.clarity.clarity.entity.TaskActivityLog;
 import com.clarity.clarity.repository.TaskActivityLogRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;

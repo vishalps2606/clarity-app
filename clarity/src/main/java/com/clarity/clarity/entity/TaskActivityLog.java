@@ -1,4 +1,4 @@
-package com.clarity.clarity.domain;
+package com.clarity.clarity.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class TimeBlockService {
 
     private final TimeBlockRepository timeBlockRepository;
     private final TaskRepository taskRepository;
+    private final TaskActivityLogService taskActivityLogService;
 
     @Transactional
     public void createTimeBlock(Long taskId, TimeBlockRequest request) {
@@ -51,6 +53,17 @@ public class TimeBlockService {
         tb.setEndTime(request.endTime());
 
         timeBlockRepository.save(tb);
+
+        taskActivityLogService.log(
+                task.getId(),
+                "TIME_BLOCK_CREATED",
+                "USER",
+                Map.of(
+                        "startTime", tb.getStartTime(),
+                        "endTime", tb.getEndTime(),
+                        "minutes", requested
+                )
+        );
     }
 }
 

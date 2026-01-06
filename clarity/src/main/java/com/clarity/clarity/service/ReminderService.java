@@ -15,12 +15,15 @@ import java.time.LocalDateTime;
 import static com.clarity.clarity.domain.TaskStatus.DONE;
 import static com.clarity.clarity.domain.TaskStatus.SKIPPED;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class ReminderService {
 
     private final ReminderRepository reminderRepository;
     private final TaskRepository taskRepository;
+    private final TaskActivityLogService taskActivityLogService;
 
     @Transactional
     public void createReminder(Long taskId, ReminderRequest request) throws BadRequestException {
@@ -46,6 +49,15 @@ public class ReminderService {
         reminder.setRemindAt(request.remindAt());
 
         reminderRepository.save(reminder);
+
+        taskActivityLogService.log(
+                task.getId(),
+                "REMINDER_CREATED",
+                "USER",
+                Map.of(
+                        "remindAt", request.remindAt()
+                )
+        );
     }
 }
 
