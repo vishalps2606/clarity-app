@@ -1,16 +1,25 @@
 package com.clarity.clarity.service;
 
+import com.clarity.clarity.dto.response.TaskActivityLogResponse;
 import com.clarity.clarity.entity.TaskActivityLog;
 import com.clarity.clarity.repository.TaskActivityLogRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger; // Use SLF4J
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 @Service
 public class TaskActivityLogService {
 
+    private static final Logger log = LoggerFactory
+            .getLogger(TaskActivityLogService.class);
     private final TaskActivityLogRepository repository;
     private final ObjectMapper objectMapper;
 
@@ -20,27 +29,52 @@ public class TaskActivityLogService {
         this.objectMapper = objectMapper;
     }
 
-    public void log(
-            Long taskId,
-            String action,
-            String performedBy,
-            Map<String, Object> metadata
-    ) {
-        TaskActivityLog log = new TaskActivityLog();
-        log.setTaskId(taskId);
-        log.setAction(action);
-        log.setPerformedBy(performedBy);
-        log.setMetadata(convert(metadata));
-        log.setCreatedAt(LocalDateTime.now());
+    @Transactional
+    public void log(Long taskId,
+                    String action,
+                    String performedBy,
+                    Map<String, Object> metadata) {
+        try {
+            TaskActivityLog logEntry = new TaskActivityLog();
+            logEntry.setTaskId(taskId);
+            logEntry.setAction(action);
+            logEntry.setPerformedBy(performedBy);
+            logEntry.setMetadata(objectMapper.writeValueAsString(metadata));
+            logEntry.setCreatedAt(LocalDateTime.now());
 
-        repository.save(log);
+            repository.save(logEntry);
+        } catch (Exception e) {
+            // FIX: Never crash the app if logging fails
+            log.error("Failed to persist activity log for task {}: {}", taskId, e.getMessage());
+        }
     }
 
-    private String convert(Map<String, Object> metadata) {
+    @Transactional(readOnly = true)
+    public List<TaskActivityLogResponse> getTaskTimeline(Long taskId) {
+        return repository.findByTaskIdOrderByCreatedAtDesc(taskId).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    private TaskActivityLogResponse mapToResponse(TaskActivityLog logEntry) {
+        Map<String, Object> metadataMap = Collections.emptyMap();
         try {
-            return objectMapper.writeValueAsString(metadata);
+            if (logEntry.getMetadata() != null) {
+                metadataMap = objectMapper.readValue(
+                        logEntry.getMetadata(),
+                        new TypeReference<Map<String, Object>>() {}
+                );
+            }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize metadata");
+            log.warn("Failed to parse metadata for log {}: {}", logEntry.getId(), e.getMessage());
         }
+
+        return new TaskActivityLogResponse(
+                logEntry.getId(),
+                logEntry.getAction(),
+                logEntry.getPerformedBy(),
+                metadataMap,
+                logEntry.getCreatedAt()
+        );
     }
 }
