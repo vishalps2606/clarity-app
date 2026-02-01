@@ -2,7 +2,7 @@ package com.clarity.clarity.service;
 
 import com.clarity.clarity.entity.Reminder;
 import com.clarity.clarity.entity.Task;
-import com.clarity.clarity.dto.ReminderRequest;
+import com.clarity.clarity.dto.request.ReminderRequest;
 import com.clarity.clarity.repository.ReminderRepository;
 import com.clarity.clarity.repository.TaskRepository;
 import jakarta.transaction.Transactional;

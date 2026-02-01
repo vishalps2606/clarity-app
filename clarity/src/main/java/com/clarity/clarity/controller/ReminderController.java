@@ -1,6 +1,6 @@
 package com.clarity.clarity.controller;
 
-import com.clarity.clarity.dto.ReminderRequest;
+import com.clarity.clarity.dto.request.ReminderRequest;
 import com.clarity.clarity.service.ReminderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
