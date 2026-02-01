@@ -1,4 +1,4 @@
-package com.clarity.clarity.dto;
+package com.clarity.clarity.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 

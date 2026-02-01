@@ -2,7 +2,7 @@ package com.clarity.clarity.service;
 
 import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.domain.TaskStatus;
-import com.clarity.clarity.dto.ReviewRequest;
+import com.clarity.clarity.dto.request.ReviewRequest;
 import com.clarity.clarity.repository.TaskRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
