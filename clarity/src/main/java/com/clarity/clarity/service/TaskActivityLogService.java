@@ -5,9 +5,10 @@ import com.clarity.clarity.entity.TaskActivityLog;
 import com.clarity.clarity.repository.TaskActivityLogRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger; // Use SLF4J
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -29,11 +30,8 @@ public class TaskActivityLogService {
         this.objectMapper = objectMapper;
     }
 
-    @Transactional
-    public void log(Long taskId,
-                    String action,
-                    String performedBy,
-                    Map<String, Object> metadata) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void log(Long taskId, String action, String performedBy, Map<String, Object> metadata) {
         try {
             TaskActivityLog logEntry = new TaskActivityLog();
             logEntry.setTaskId(taskId);
@@ -44,7 +42,6 @@ public class TaskActivityLogService {
 
             repository.save(logEntry);
         } catch (Exception e) {
-            // FIX: Never crash the app if logging fails
             log.error("Failed to persist activity log for task {}: {}", taskId, e.getMessage());
         }
     }
