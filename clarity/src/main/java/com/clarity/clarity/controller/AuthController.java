@@ -1,6 +1,8 @@
 package com.clarity.clarity.controller;
 
+import com.clarity.clarity.dto.request.LoginRequest;
 import com.clarity.clarity.dto.request.RegisterRequest;
+import com.clarity.clarity.dto.response.AuthResponse;
 import com.clarity.clarity.entity.User;
 import com.clarity.clarity.service.AuthService;
 import jakarta.validation.Valid;
@@ -14,6 +16,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
 
     @PostMapping("/register")
     public ResponseEntity<User> register(@RequestBody @Valid RegisterRequest request) {
