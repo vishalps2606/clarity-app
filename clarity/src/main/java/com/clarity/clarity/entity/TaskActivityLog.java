@@ -37,4 +37,7 @@ public class TaskActivityLog {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 }

@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TimeBlockRepository extends JpaRepository<TimeBlock, Long> {
     List<TimeBlock> findByTaskId(Long taskId);
@@ -20,4 +21,8 @@ public interface TimeBlockRepository extends JpaRepository<TimeBlock, Long> {
 
     // New: Find all blocks for ANY task on a specific day (Daily Capacity check)
     List<TimeBlock> findByStartTimeBetween(LocalDateTime startOfDay, LocalDateTime endOfDay);
+
+    List<TimeBlock> findAllByUserId(Long userId);
+
+    Optional<TimeBlock> findByIdAndUserId(Long id, Long userId);
 }

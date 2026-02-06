@@ -23,4 +23,7 @@ public class TimeBlock {
 
     @Column(nullable = false)
     private LocalDateTime endTime;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 }

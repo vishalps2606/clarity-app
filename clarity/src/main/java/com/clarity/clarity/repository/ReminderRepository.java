@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
@@ -15,5 +16,9 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
             ReminderStatus status,
             LocalDateTime now
     );
+
+    List<Reminder> findAllByUserId(Long userId);
+
+    Optional<Reminder> findByIdAndUserId(Long id, Long userId);
 }
 

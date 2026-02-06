@@ -32,4 +32,7 @@ public class Goal {
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 }
