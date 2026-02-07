@@ -1,0 +1,66 @@
+### Environment Variables
+@baseUrl = http://localhost:8080
+
+### ==========================================
+### 1. GOAL & TASK MANAGEMENT
+### ==========================================
+
+### Get All Tasks (Should see seed data)
+GET {{baseUrl}}/tasks
+Accept: application/json
+
+### Create a New Task
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Test the API manually",
+  "goalId": 1,
+  "estimatedMinutes": 45,
+  "dueDatetime": "2026-12-31T23:59:00"
+}
+
+### ==========================================
+### 2. TASK ACTIVITY LOGS (NEW FEATURE)
+### ==========================================
+
+### Get Timeline for Seed Task #1 (Expect 2 logs)
+GET {{baseUrl}}/tasks/1/activity
+Accept: application/json
+
+### ==========================================
+### 3. TASK REVIEW FLOW
+### ==========================================
+
+### Get Tasks Needing Review (Seed Task #3 might appear here after scheduler runs)
+GET {{baseUrl}}/tasks/review
+Accept: application/json
+
+### Review a Task (Mark Task #4 as RESUMED)
+# Note: You might need to change ID 4 to an actual task ID that needs review
+POST {{baseUrl}}/tasks/4/review
+Content-Type: application/json
+
+{
+  "decision": "RESUME",
+  "note": "Feeling better now"
+}
+
+### ==========================================
+### 4. TIME BLOCKING
+### ==========================================
+
+### Create Time Block for Task #2
+POST {{baseUrl}}/tasks/2/time-blocks
+Content-Type: application/json
+
+{
+  "startTime": "2026-02-02T14:00:00",
+  "endTime": "2026-02-02T16:00:00"
+}
+
+### ==========================================
+### 5. SCHEDULER TRIGGER (OPTIONAL)
+### ==========================================
+# If you expose an endpoint to trigger schedulers manually, call it here.
+# Otherwise, wait 1 minute for  methods to run.
