@@ -20,6 +20,9 @@ public class TaskActivityLog {
     @Column(nullable = false)
     private Long taskId;
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @Column(nullable = false)
     private String action;
 
@@ -37,7 +40,4 @@ public class TaskActivityLog {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
-
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
 }

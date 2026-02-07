@@ -1,8 +1,11 @@
 package com.clarity.clarity.service;
 
 import com.clarity.clarity.dto.response.TaskActivityLogResponse;
+import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.entity.TaskActivityLog;
 import com.clarity.clarity.repository.TaskActivityLogRepository;
+import com.clarity.clarity.repository.TaskRepository;
+import com.clarity.clarity.util.SecurityUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -19,22 +22,36 @@ import java.util.Collections;
 @Service
 public class TaskActivityLogService {
 
-    private static final Logger log = LoggerFactory
-            .getLogger(TaskActivityLogService.class);
+    private static final Logger log = LoggerFactory.getLogger(TaskActivityLogService.class);
+
     private final TaskActivityLogRepository repository;
+    private final TaskRepository taskRepository;
     private final ObjectMapper objectMapper;
+    private final SecurityUtils securityUtils;
 
     public TaskActivityLogService(TaskActivityLogRepository repository,
-                                  ObjectMapper objectMapper) {
+                                  TaskRepository taskRepository,
+                                  ObjectMapper objectMapper,
+                                  SecurityUtils securityUtils) {
         this.repository = repository;
+        this.taskRepository = taskRepository;
         this.objectMapper = objectMapper;
+        this.securityUtils = securityUtils;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void log(Long taskId, String action, String performedBy, Map<String, Object> metadata) {
         try {
+            // 1. Fetch the Task to find the Owner
+            Task task = taskRepository.findById(taskId)
+                    .orElseThrow(() -> new IllegalArgumentException("Task not found for logging"));
+
             TaskActivityLog logEntry = new TaskActivityLog();
             logEntry.setTaskId(taskId);
+
+            // 2. SAVE THE USER ID (This closes the loop!)
+            logEntry.setUserId(task.getUserId());
+
             logEntry.setAction(action);
             logEntry.setPerformedBy(performedBy);
             logEntry.setMetadata(objectMapper.writeValueAsString(metadata));
@@ -48,7 +65,10 @@ public class TaskActivityLogService {
 
     @Transactional(readOnly = true)
     public List<TaskActivityLogResponse> getTaskTimeline(Long taskId) {
-        return repository.findByTaskIdOrderByCreatedAtDesc(taskId).stream()
+        Long userId = securityUtils.getCurrentUserId();
+
+        // SECURE METHOD
+        return repository.findByTaskIdAndUserIdOrderByCreatedAtDesc(taskId, userId).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
