@@ -14,6 +14,8 @@ import java.util.Optional;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
+    // --- SYSTEM QUERIES (For Schedulers ONLY) ---
+    // NO userId filter here, because the System must process everyone's data.
     @Query("""
         SELECT t FROM Task t
         WHERE t.dueDatetime IS NOT NULL
@@ -21,14 +23,20 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
           AND t.status IN :statuses
           AND t.needsReview = false
     """)
-    List<Task> findOverdueTasksForReview(
+    List<Task> findAllOverdueTasksForSystem(
             @Param("now") LocalDateTime now,
             @Param("statuses") List<TaskStatus> statuses
     );
 
-    List<Task> findByNeedsReviewTrue();
+    // --- USER QUERIES (For API) ---
+    // STRICTLY filtered by userId.
 
+    // For GET /tasks/review
+    List<Task> findByNeedsReviewTrueAndUserId(Long userId);
+
+    // For GET /tasks
     List<Task> findAllByUserId(Long userId);
 
+    // For GET /tasks/{id} or updates
     Optional<Task> findByIdAndUserId(Long id, Long userId);
 }

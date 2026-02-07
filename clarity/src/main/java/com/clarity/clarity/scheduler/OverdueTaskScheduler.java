@@ -26,16 +26,11 @@ public class OverdueTaskScheduler {
     @Scheduled(cron = "0 10 0 * * *")
     @Transactional
     public void markOverdueTasksForReview() {
-
         LocalDateTime now = LocalDateTime.now();
+        List<TaskStatus> activeStatuses = List.of(TaskStatus.READY, TaskStatus.IN_PROGRESS);
 
-        List<TaskStatus> activeStatuses = List.of(
-                TaskStatus.READY,
-                TaskStatus.IN_PROGRESS
-        );
-
-        List<Task> overdueTasks =
-                taskRepository.findOverdueTasksForReview(now, activeStatuses);
+        // FIX: Use the System query (no userId required)
+        List<Task> overdueTasks = taskRepository.findAllOverdueTasksForSystem(now, activeStatuses);
 
         if (overdueTasks.isEmpty()) {
             return;
@@ -43,23 +38,14 @@ public class OverdueTaskScheduler {
 
         for (Task task : overdueTasks) {
             task.setNeedsReview(true);
-
-            log.warn(
-                    "⚠️ TASK OVERDUE | TaskId={} | Title={} | Due={}",
-                    task.getId(),
-                    task.getTitle(),
-                    task.getDueDatetime()
-            );
+            log.warn("⚠️ TASK OVERDUE | TaskId={} | Title={} | Due={}", task.getId(), task.getTitle(), task.getDueDatetime());
 
             taskActivityLogService.log(
                     task.getId(),
                     "TASK_FLAGGED_FOR_REVIEW",
                     "SYSTEM",
-                    Map.of(
-                            "dueDatetime", task.getDueDatetime()
-                    )
+                    Map.of("dueDatetime", task.getDueDatetime())
             );
         }
     }
 }
-
