@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Review from "./pages/Review";
+import FocusMode from "./pages/FocusMode";
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -31,6 +32,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Review />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/focus/:taskId"
+        element={
+          <ProtectedRoute>
+            <FocusMode />
           </ProtectedRoute>
         }
       />
