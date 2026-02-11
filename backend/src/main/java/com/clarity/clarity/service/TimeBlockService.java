@@ -1,12 +1,14 @@
 package com.clarity.clarity.service;
 
-import com.clarity.clarity.dto.request.TimeBlockRequest; // Ensure you use your Request DTO package
+import com.clarity.clarity.domain.TaskStatus;
+import com.clarity.clarity.dto.request.TimeBlockRequest;
 import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.entity.TimeBlock;
 import com.clarity.clarity.repository.TaskRepository;
 import com.clarity.clarity.repository.TimeBlockRepository;
 import com.clarity.clarity.util.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ import java.time.Duration;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TimeBlockService {
 
     private final TimeBlockRepository timeBlockRepository;
@@ -23,23 +26,10 @@ public class TimeBlockService {
     private final DailyPlanningService dailyPlanningService;
     private final SecurityUtils securityUtils;
 
-    // Constructor Injection
-    public TimeBlockService(TimeBlockRepository timeBlockRepository,
-                            TaskRepository taskRepository,
-                            TaskActivityLogService activityLogService,
-                            DailyPlanningService dailyPlanningService,
-                            SecurityUtils securityUtils) {
-        this.timeBlockRepository = timeBlockRepository;
-        this.taskRepository = taskRepository;
-        this.activityLogService = activityLogService;
-        this.dailyPlanningService = dailyPlanningService;
-        this.securityUtils = securityUtils;
-    }
-
     @Transactional
     public TimeBlock createTimeBlock(Long taskId, TimeBlockRequest request) {
-
         Long userId = securityUtils.getCurrentUserId();
+
         Task task = taskRepository.findByIdAndUserId(taskId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found or access denied"));
 
@@ -52,15 +42,25 @@ public class TimeBlockService {
 
         TimeBlock timeBlock = new TimeBlock();
         timeBlock.setTask(task);
+        timeBlock.setUserId(userId);
         timeBlock.setStartTime(request.startTime());
         timeBlock.setEndTime(request.endTime());
-
         TimeBlock saved = timeBlockRepository.save(timeBlock);
 
+        int currentActual = task.getActualMinutes() == null ? 0 : task.getActualMinutes();
+        task.setActualMinutes(currentActual + (int) durationMinutes);
+
+        if (task.getStatus() == TaskStatus.READY) {
+            task.setStatus(TaskStatus.IN_PROGRESS);
+        }
+
+        taskRepository.save(task);
+
         try {
-            activityLogService.log(taskId, "TIME_BLOCK_CREATED", "USER", java.util.Collections.emptyMap());
+            activityLogService.log(taskId, "TIME_BLOCK_CREATED", "USER",
+                    java.util.Map.of("minutesLogged", durationMinutes));
         } catch (Exception e) {
-            log.warn("Issue in TimeBlockService - {}",e.getMessage());
+            log.warn("Exception occurred while saving time block", e);
         }
 
         return saved;

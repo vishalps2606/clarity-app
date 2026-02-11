@@ -7,6 +7,7 @@ import com.clarity.clarity.repository.GoalRepository;
 import com.clarity.clarity.repository.TaskRepository;
 import com.clarity.clarity.util.SecurityUtils;
 import com.clarity.clarity.domain.TaskStatus;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,18 @@ public class TaskService {
         activityLogService.log(savedTask.getId(), "TASK_CREATED", "USER", Collections.emptyMap());
 
         return savedTask;
+    }
+
+    @Transactional
+    public void completeTask(Long taskId) {
+        Long userId = securityUtils.getCurrentUserId();
+        Task task = taskRepository.findByIdAndUserId(taskId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found"));
+
+        task.setStatus(TaskStatus.DONE);
+        taskRepository.save(task);
+
+        activityLogService.log(taskId, "TASK_COMPLETED", "USER", java.util.Collections.emptyMap());
     }
 
     public List<Task> getAllTasks() {

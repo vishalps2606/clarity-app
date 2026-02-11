@@ -2,7 +2,6 @@ package com.clarity.clarity.controller;
 
 import com.clarity.clarity.dto.request.ReviewRequest;
 import com.clarity.clarity.dto.request.TaskRequest;
-import com.clarity.clarity.dto.request.TimeBlockRequest;
 import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.service.TaskReviewService;
 import com.clarity.clarity.service.TaskService;
@@ -44,6 +43,12 @@ public class TaskController {
             @Valid @RequestBody ReviewRequest request
     ) {
         taskReviewService.reviewTask(id, request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<Void> completeTask(@PathVariable Long id) {
+        taskService.completeTask(id);
         return ResponseEntity.ok().build();
     }
 }

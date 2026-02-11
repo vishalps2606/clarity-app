@@ -1,7 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Review from "./pages/Review";
+import FocusMode from "./pages/FocusMode";
+import Goals from "./pages/Goals";
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -15,16 +19,39 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      
       {/* Protected Dashboard (Placeholder) */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <div className="p-10 text-neon-blue font-mono text-xl">
-             ACCESS GRANTED. WELCOME TO CLARITY.
-          </div>
-        </ProtectedRoute>
-      } />
-
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/review"
+        element={
+          <ProtectedRoute>
+            <Review />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/focus/:taskId"
+        element={
+          <ProtectedRoute>
+            <FocusMode />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goals"
+        element={
+          <ProtectedRoute>
+            <Goals />
+          </ProtectedRoute>
+        }
+      />
       {/* Default Redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
