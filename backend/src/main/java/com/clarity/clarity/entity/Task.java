@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "tasks")
@@ -45,4 +47,7 @@ public class Task {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+//
+//    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<TimeBlock> timeBlocks = new ArrayList<>();
 }

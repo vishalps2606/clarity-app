@@ -5,6 +5,7 @@ import com.clarity.clarity.entity.Goal;
 import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.repository.GoalRepository;
 import com.clarity.clarity.repository.TaskRepository;
+import com.clarity.clarity.repository.TimeBlockRepository;
 import com.clarity.clarity.util.SecurityUtils;
 import com.clarity.clarity.domain.TaskStatus;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,6 +24,7 @@ public class TaskService {
     private final GoalRepository goalRepository;
     private final SecurityUtils securityUtils;
     private final TaskActivityLogService activityLogService;
+    private final TimeBlockRepository timeBlockRepository;
 
     @Transactional
     public Task createTask(TaskRequest request) {
@@ -68,5 +70,16 @@ public class TaskService {
     public List<Task> getTasksNeedingReview() {
         Long userId = securityUtils.getCurrentUserId();
         return taskRepository.findByNeedsReviewTrueAndUserId(userId);
+    }
+
+    @Transactional
+    public void deleteTask(Long taskId) {
+        Long userId = securityUtils.getCurrentUserId();
+        Task task = taskRepository.findByIdAndUserId(taskId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found or access denied"));
+
+        timeBlockRepository.deleteAllByTaskId(taskId);
+
+        taskRepository.delete(task);
     }
 }

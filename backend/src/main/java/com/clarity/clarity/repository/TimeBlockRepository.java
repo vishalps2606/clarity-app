@@ -25,4 +25,6 @@ public interface TimeBlockRepository extends JpaRepository<TimeBlock, Long> {
     List<TimeBlock> findAllByUserId(Long userId);
 
     Optional<TimeBlock> findByIdAndUserId(Long id, Long userId);
+
+    void deleteAllByTaskId(Long taskId);
 }
