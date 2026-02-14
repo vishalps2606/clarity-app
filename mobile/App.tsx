@@ -1,4 +1,4 @@
-import './global.css';
+import "./global.css"; // <--- IMPORT THIS at the very top
 import { StatusBar } from 'expo-status-bar';
 import { Text, View, TouchableOpacity } from 'react-native';
 
@@ -18,7 +18,7 @@ export default function App() {
         MOBILE UPLINK ONLINE
       </Text>
 
-      <TouchableOpacity className="bg-surface border border-neon-blue px-8 py-4 rounded-lg">
+      <TouchableOpacity className="bg-surface border border-neon-blue px-8 py-4 rounded-lg active:bg-neon-blue/20">
         <Text className="text-neon-blue font-bold">INITIALIZE</Text>
       </TouchableOpacity>
     </View>
