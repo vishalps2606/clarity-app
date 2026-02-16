@@ -1,48 +1,45 @@
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store'; // Keep this for persistence!
 
-// 1. Load from Environment
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const LOCAL_IP = process.env.EXPO_PUBLIC_LOCAL_IP || '192.168.1.5';
 
-if (!BASE_URL) {
-    console.error("❌ API URL MISSING! Create a .env file with EXPO_PUBLIC_API_URL");
-}
+const BASE_URL = Platform.select({
+    // Special IP for Android Emulator to reach PC localhost
+    android: 'http://10.0.2.2:8080/api', 
+    // iOS Simulator / Physical Device (Uses LAN IP)
+    ios: `http://${LOCAL_IP}:8080/api`,
+    // Web Browser
+    web: 'http://localhost:8080/api', 
+});
 
-// Create axios instance with base config
 const client = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 10000, 
 });
 
-// Store token reference separately
-let currentToken: string | null = null;
-
-// Function to set token (called from LoginScreen after login)
-export const setAuthToken = (token: string | null) => {
-  currentToken = token;
-  if (token) {
-    client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete client.defaults.headers.common['Authorization'];
-  }
-};
-
-client.interceptors.request.use((config) => {
-  if (currentToken) {
-    config.headers.Authorization = `Bearer ${currentToken}`;
+client.interceptors.request.use(async (config) => {
+  try {
+    const token = await SecureStore.getItemAsync('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.log('Error loading token', error);
   }
   return config;
-}, (error) => {
-  return Promise.reject(error);
 });
 
+// 4. Response Logger (Helpful for debugging)
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error);
+    // Log the actual error message from backend if available
+    const message = error.response?.data?.message || error.message;
+    console.error(`API Error [${error.config?.url}]:`, message);
     return Promise.reject(error);
   }
 );

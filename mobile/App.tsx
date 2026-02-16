@@ -1,6 +1,5 @@
-import "./global.css";
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,87 +8,38 @@ import LoginScreen from './src/screens/LoginScreen';
 
 const Stack = createNativeStackNavigator();
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#050505',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0AFF60',
-    marginBottom: 16,
-  },
-  syncingText: {
-    fontSize: 14,
-    color: '#00F0FF',
-  },
-  button: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#FF003C',
-    borderRadius: 6,
-  },
-  buttonText: {
-    color: '#FF003C',
-  },
-  errorContainer: {
-    flex: 1,
-    backgroundColor: '#050505',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  errorText: {
-    color: '#FF003C',
-    textAlign: 'center',
-    fontSize: 16,
-  },
-});
-
-// Temporary Dashboard Placeholder
-function DashboardPlaceholder() {
-    const { logout } = useAuth();
-    return (
-        <View style={styles.container}>
-            <Text style={styles.successText}>ACCESS GRANTED</Text>
-            <TouchableOpacity onPress={logout} style={styles.button}>
-                <Text style={styles.buttonText}>DISCONNECT</Text>
-            </TouchableOpacity>
-        </View>
-    );
+// A simple dashboard to show after login
+function DashboardScreen() {
+  const { logout } = useAuth();
+  return (
+    <View style={{ flex: 1, backgroundColor: '#050505', alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: '#0AFF60', fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
+        SYSTEM ONLINE
+      </Text>
+      <Text style={{ color: '#EDEDED', marginBottom: 40 }}>Welcome, Agent.</Text>
+      <Text onPress={logout} style={{ color: '#FF003C', padding: 10, borderWidth: 1, borderColor: '#FF003C', borderRadius: 5 }}>
+        DISCONNECT
+      </Text>
+    </View>
+  );
 }
 
-function Navigation() {
-  const authContext = useAuth();
-  const { token, isLoading } = authContext;
-
-  if (typeof isLoading !== 'boolean' || isLoading === undefined || isLoading === null) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#00F0FF" />
-        <Text style={styles.syncingText}>INITIALIZING...</Text>
-      </View>
-    );
-  }
+function AppNavigator() {
+  const { token, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-        <View style={styles.container}>
-            <ActivityIndicator size="large" color="#00F0FF" />
-            <Text style={styles.syncingText}>SYNCING...</Text>
-        </View>
+      <View style={{ flex: 1, backgroundColor: '#050505', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#00F0FF" />
+      </View>
     );
   }
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#050505' } }}>
         {token ? (
-          <Stack.Screen name="Dashboard" component={DashboardPlaceholder} />
+          <Stack.Screen name="Dashboard" component={DashboardScreen} />
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
@@ -102,7 +52,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <Navigation />
+        <AppNavigator />
       </AuthProvider>
     </SafeAreaProvider>
   );
