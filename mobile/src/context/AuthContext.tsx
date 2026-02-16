@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import * as SecureStore from 'expo-secure-store'; // <--- We must actually use this!
 
 interface AuthContextType {
   token: string | null;
@@ -11,19 +12,31 @@ const defaultAuthContext: AuthContextType = {
   token: null,
   login: async () => {},
   logout: async () => {},
-  isLoading: false,
+  isLoading: true, // Default to true so we don't flash the login screen
 };
 
 const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // 1. LOAD TOKEN ON STARTUP
   useEffect(() => {
-    // For now, just set isLoading to false immediately
-    // We'll skip persisting token between app restarts to avoid storage issues
-    setIsLoading(false);
+    const loadToken = async () => {
+      try {
+        const storedToken = await SecureStore.getItemAsync('token');
+        if (storedToken) {
+          setToken(storedToken);
+        }
+      } catch (e) {
+        console.error('Failed to load token', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadToken();
   }, []);
 
   const login = async (newToken: string) => {
@@ -31,17 +44,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
         throw new Error('Invalid token: must be a non-empty string');
       }
-      console.log('Logged in successfully');
+      
+      // 2. SAVE TOKEN TO SECURE STORE (Critical!)
+      await SecureStore.setItemAsync('token', newToken);
+      
+      console.log('Token saved securely');
       setToken(newToken);
     } catch (e) {
       console.error('Login error:', e);
-      setToken(null);
       throw e;
     }
   };
 
   const logout = async () => {
     try {
+      // 3. DELETE TOKEN FROM SECURE STORE
+      await SecureStore.deleteItemAsync('token');
+      
       console.log('Logged out');
       setToken(null);
     } catch (e) {
