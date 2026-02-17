@@ -28,6 +28,12 @@ public class TaskService {
 
     @Transactional
     public Task createTask(TaskRequest request) {
+
+        if (request.dueDatetime() != null &&
+                request.dueDatetime().isBefore(java.time.LocalDateTime.now().minusMinutes(1))) {
+            throw new IllegalArgumentException("Due date must be in the future");
+        }
+
         Long userId = securityUtils.getCurrentUserId();
 
         Goal goal = goalRepository.findByIdAndUserId(request.goalId(), userId)
@@ -81,5 +87,36 @@ public class TaskService {
         timeBlockRepository.deleteAllByTaskId(taskId);
 
         taskRepository.delete(task);
+    }
+
+    public Task getTaskById(Long id) {
+        Long userId = securityUtils.getCurrentUserId(); // <--- SECURITY CHECK
+        return taskRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found or access denied"));
+    }
+
+    @Transactional
+    public Task updateTask(Long id, TaskRequest request) {
+        Long userId = securityUtils.getCurrentUserId();
+
+        Task task = taskRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found or access denied"));
+
+        task.setTitle(request.title());
+        task.setEstimatedMinutes(request.estimatedMinutes());
+
+        if (request.actualMinutes() != null) {
+            task.setActualMinutes(request.actualMinutes());
+        }
+
+        task.setDueDatetime(request.dueDatetime());
+
+        if (request.goalId() != null && !request.goalId().equals(task.getGoal().getId())) {
+            Goal newGoal = goalRepository.findByIdAndUserId(request.goalId(), userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Target goal not found"));
+            task.setGoal(newGoal);
+        }
+
+        return taskRepository.save(task);
     }
 }

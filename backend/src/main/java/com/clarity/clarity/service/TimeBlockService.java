@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -27,8 +30,13 @@ public class TimeBlockService {
     private final SecurityUtils securityUtils;
 
     @Transactional
-    public TimeBlock createTimeBlock(Long taskId, TimeBlockRequest request) {
+    public TimeBlock createTimeBlock(TimeBlockRequest request) {
+
         Long userId = securityUtils.getCurrentUserId();
+
+        // Extract Task ID from Request
+        Long taskId = request.taskId();
+        if (taskId == null) throw new IllegalArgumentException("Task ID is required");
 
         Task task = taskRepository.findByIdAndUserId(taskId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found or access denied"));
@@ -64,5 +72,18 @@ public class TimeBlockService {
         }
 
         return saved;
+    }
+
+    public List<TimeBlock> getBlocksForDay(java.time.LocalDate date) {
+        Long userId = securityUtils.getCurrentUserId();
+        java.time.LocalDateTime start = date.atStartOfDay();
+        java.time.LocalDateTime end = date.plusDays(1).atStartOfDay();
+        return timeBlockRepository.findByUserIdAndDate(userId, start, end);
+    }
+
+    @Transactional
+    public void deleteBlock(Long id) {
+        Long userId = securityUtils.getCurrentUserId();
+        timeBlockRepository.deleteByIdAndUserId(id, userId);
     }
 }

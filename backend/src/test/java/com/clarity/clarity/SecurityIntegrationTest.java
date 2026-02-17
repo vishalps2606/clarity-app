@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "application.security.jwt.secret-key={JWT_SECRET_KEY}"
+        "application.security.jwt.secret-key={JWT_TOKEN}"
 })
 class SecurityIntegrationTest {
 
