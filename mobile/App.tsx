@@ -5,24 +5,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
 
 const Stack = createNativeStackNavigator();
-
-// A simple dashboard to show after login
-function DashboardScreen() {
-  const { logout } = useAuth();
-  return (
-    <View style={{ flex: 1, backgroundColor: '#050505', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: '#0AFF60', fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
-        SYSTEM ONLINE
-      </Text>
-      <Text style={{ color: '#EDEDED', marginBottom: 40 }}>Welcome, Agent.</Text>
-      <Text onPress={logout} style={{ color: '#FF003C', padding: 10, borderWidth: 1, borderColor: '#FF003C', borderRadius: 5 }}>
-        DISCONNECT
-      </Text>
-    </View>
-  );
-}
 
 function AppNavigator() {
   const { token, isLoading } = useAuth();
