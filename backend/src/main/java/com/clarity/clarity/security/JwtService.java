@@ -66,7 +66,9 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        // FIX: Using BASE64URL to support underscores/hyphens in the key
+        // OLD: byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

@@ -6,7 +6,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Home, Target, Zap, BarChart3, RefreshCw } from "lucide-react-native";
+import { Home, Target, Calendar, BarChart3, RefreshCw } from "lucide-react-native";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
@@ -16,6 +16,7 @@ import FocusModeScreen from "./src/screens/FocusModeScreen";
 import GoalsScreen from "./src/screens/GoalsScreen";
 import InsightsScreen from "./src/screens/InsightsScreen";
 import ReviewScreen from "./src/screens/ReviewScreen";
+import ScheduleScreen from "./src/screens/ScheduleScreen";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -65,11 +66,11 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Insights"
-        component={InsightsScreen}
+        name="Schedule"
+        component={ScheduleScreen}
         options={{
-          tabBarIcon: ({ color }) => <BarChart3 size={24} color={color} />,
-          tabBarLabel: "INSIGHTS",
+          tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
+          tabBarLabel: "SCHEDULE",
         }}
       />
       <Tab.Screen
@@ -78,6 +79,14 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color }) => <RefreshCw size={24} color={color} />,
           tabBarLabel: "REVIEW",
+        }}
+      />
+      <Tab.Screen
+        name="Insights"
+        component={InsightsScreen}
+        options={{
+          tabBarIcon: ({ color }) => <BarChart3 size={24} color={color} />,
+          tabBarLabel: "INSIGHTS",
         }}
       />
     </Tab.Navigator>

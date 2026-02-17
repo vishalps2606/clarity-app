@@ -29,7 +29,8 @@ export default function FocusMode() {
     const startTime = new Date(endTime.getTime() - minutesSpent * 60000);
 
     try {
-      await api.post(`/tasks/${taskId}/time-blocks`, {
+      await api.post(`/time-blocks`, {
+        taskId: task.id,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString()
       });
