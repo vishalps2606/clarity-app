@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Clock, AlertCircle, CheckSquare, Trash2 } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Clock, AlertCircle, CheckSquare, Trash2, Play } from 'lucide-react-native'; 
 import client from '../api/client';
 
 interface Task {
@@ -8,6 +9,7 @@ interface Task {
   title: string;
   status: 'READY' | 'IN_PROGRESS' | 'DONE';
   estimatedMinutes: number;
+  actualMinutes?: number; 
   dueDatetime: string;
 }
 
@@ -17,10 +19,13 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task, onRefresh }: TaskCardProps) {
+  const navigation = useNavigation<any>(); 
+  
   const isOverdue = new Date(task.dueDatetime) < new Date() && task.status !== 'DONE';
 
   const handleComplete = async () => {
     try {
+      // Optimistic update or just wait for refresh
       await client.put(`/tasks/${task.id}/complete`);
       onRefresh();
     } catch (err) {
@@ -46,56 +51,84 @@ export default function TaskCard({ task, onRefresh }: TaskCardProps) {
     ]);
   };
 
+  const handleFocus = () => {
+    navigation.navigate('FocusMode', { 
+        taskId: task.id, 
+        initialTitle: task.title, 
+        currentActualMinutes: task.actualMinutes || 0 
+    });
+  };
+
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <View style={[styles.badge, 
-            task.status === 'DONE' ? styles.badgeDone : 
-            task.status === 'IN_PROGRESS' ? styles.badgeProgress : styles.badgeReady
-        ]}>
-          <Text style={[styles.badgeText, 
-              task.status === 'DONE' ? styles.textDone : 
-              task.status === 'IN_PROGRESS' ? styles.textProgress : styles.textReady
+
+    <TouchableOpacity 
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+      style={styles.cardContainer}
+    >
+      <View style={styles.card}>
+        <View style={styles.header}>
+          <View style={[styles.badge, 
+              task.status === 'DONE' ? styles.badgeDone : 
+              task.status === 'IN_PROGRESS' ? styles.badgeProgress : styles.badgeReady
           ]}>
-            {task.status.replace('_', ' ')}
+            <Text style={[styles.badgeText, 
+                task.status === 'DONE' ? styles.textDone : 
+                task.status === 'IN_PROGRESS' ? styles.textProgress : styles.textReady
+            ]}>
+              {task.status.replace('_', ' ')}
+            </Text>
+          </View>
+          {isOverdue && <AlertCircle size={16} color="#FF003C" />}
+        </View>
+
+        <Text style={styles.title} numberOfLines={2}>{task.title}</Text>
+
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Clock size={12} color="#888" />
+            <Text style={styles.metaText}>
+                {task.actualMinutes ? `${task.actualMinutes}/` : ''}{task.estimatedMinutes}m
+            </Text>
+          </View>
+          <Text style={styles.metaText}>
+            {new Date(task.dueDatetime).toLocaleDateString()}
           </Text>
         </View>
-        {isOverdue && <AlertCircle size={16} color="#FF003C" />}
-      </View>
 
-      <Text style={styles.title} numberOfLines={2}>{task.title}</Text>
+        <View style={styles.actionBar}>
+          {task.status !== 'DONE' && (
+             <>
+                {/* 1. FOCUS BUTTON */}
+                <TouchableOpacity onPress={handleFocus} style={[styles.actionBtn, styles.focusBtn]}>
+                    <Play size={20} color="#000" fill="#000" />
+                </TouchableOpacity>
 
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Clock size={12} color="#888" />
-          <Text style={styles.metaText}>{task.estimatedMinutes}m</Text>
+                {/* 2. COMPLETE BUTTON */}
+                <TouchableOpacity onPress={handleComplete} style={styles.actionBtn}>
+                    <CheckSquare size={20} color="#0AFF60" />
+                </TouchableOpacity>
+             </>
+          )}
+          
+          {/* 3. DELETE BUTTON */}
+          <TouchableOpacity onPress={handleDelete} style={[styles.actionBtn, styles.deleteBtn]}>
+              <Trash2 size={20} color="#FF003C" />
+          </TouchableOpacity>
         </View>
-        <Text style={styles.metaText}>
-          {new Date(task.dueDatetime).toLocaleDateString()}
-        </Text>
       </View>
-
-      {/* Quick Actions */}
-      <View style={styles.actionBar}>
-        {task.status !== 'DONE' && (
-            <TouchableOpacity onPress={handleComplete} style={styles.actionBtn}>
-                <CheckSquare size={20} color="#0AFF60" />
-            </TouchableOpacity>
-        )}
-        <TouchableOpacity onPress={handleDelete} style={[styles.actionBtn, styles.deleteBtn]}>
-            <Trash2 size={20} color="#FF003C" />
-        </TouchableOpacity>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  cardContainer: {
+    marginBottom: 12,
+  },
   card: {
     backgroundColor: '#121212',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#2A2A2A',
   },
@@ -141,16 +174,22 @@ const styles = StyleSheet.create({
   },
   actionBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#2A2A2A',
     paddingTop: 12,
-    gap: 16,
+    gap: 12, 
   },
   actionBtn: {
     padding: 4,
   },
+  focusBtn: {
+    backgroundColor: '#EDEDED',
+    borderRadius: 4,
+    padding: 2,
+    marginRight: 8,
+  },
   deleteBtn: {
-    marginLeft: 'auto',
+    marginLeft: 'auto', 
   },
 });

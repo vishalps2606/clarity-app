@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Plus } from 'lucide-react-native';
 import client from '../api/client';
 import TaskCard from '../components/TaskCard';
 
 export default function DashboardScreen() {
   const { logout } = useAuth();
+  const navigation = useNavigation<any>();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,16 +26,17 @@ export default function DashboardScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchTasks();
   }, []);
 
-  // Filter Logic (Matches Web: Today + Overdue)
   const todaysTasks = tasks.filter(task => {
     if (task.status === 'DONE') return false;
     const taskDate = new Date(task.dueDatetime);
@@ -42,12 +46,11 @@ export default function DashboardScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00F0FF" />}
       >
-        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>COMMAND CENTER</Text>
@@ -56,7 +59,6 @@ export default function DashboardScreen() {
           <Text onPress={logout} style={styles.logoutBtn}>EXIT</Text>
         </View>
 
-        {/* Stats Grid */}
         <View style={styles.statsGrid}>
             <View style={styles.statCard}>
                 <Text style={styles.statLabel}>PENDING</Text>
@@ -85,13 +87,21 @@ export default function DashboardScreen() {
             ))
         )}
       </ScrollView>
+
+      {/* FLOATING ACTION BUTTON */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => navigation.navigate('CreateTask')}
+      >
+        <Plus size={32} color="#000" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#050505' },
-  scrollContent: { padding: 20 },
+  scrollContent: { padding: 20, paddingBottom: 100 }, // Extra padding for FAB
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -120,4 +130,21 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', marginTop: 40, opacity: 0.5 },
   emptyText: { color: '#EDEDED', fontSize: 16 },
   emptySubtext: { color: '#888', fontSize: 12 },
+
+  // FAB STYLES
+  fab: {
+    position: 'absolute',
+    bottom: 32,
+    right: 32,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#00F0FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#00F0FF',
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
 });

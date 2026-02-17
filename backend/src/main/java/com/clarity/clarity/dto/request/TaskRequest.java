@@ -16,6 +16,8 @@ public record TaskRequest(
         @NotNull(message = "Estimated minutes are required")
         Integer estimatedMinutes,
 
-        @FutureOrPresent(message = "Due date cannot be in the past")
+        Integer actualMinutes,
+
+//        @FutureOrPresent(message = "Due date cannot be in the past")
         LocalDateTime dueDatetime
 ) {}
