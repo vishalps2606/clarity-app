@@ -1,169 +1,213 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Play, Pause, Square, CheckCircle, ArrowLeft } from 'lucide-react-native';
+import { Audio } from 'expo-av';
 import client from '../api/client';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function FocusModeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { taskId, initialTitle, currentActualMinutes } = route.params;
 
   // Timer State
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60); // Default 25 mins
+  const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
-  const [sessionMinutes, setSessionMinutes] = useState(0); // Tracked in this session
+  const [sessionStart, setSessionStart] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
-  
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Timer Logic
+  // Refs for interval and background keeping
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    if (isActive) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            setIsActive(false);
-            Alert.alert("Focus Cycle Complete", "Take a breather.");
-            return 0;
-          }
-          return prev - 1;
-        });
-        // Track accumulated time every minute (roughly)
-        // Better logic: store startTime, but this is simple enough for V1
-      }, 1000);
-    } else if (!isActive && timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isActive]);
+    // Auto-start on entry
+    startTimer();
+    return () => stopTimer();
+  }, []);
 
-  // Format MM:SS
-  const formatTime = (totalSeconds: number) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const startTimer = () => {
+    if (!isActive) {
+      if (!sessionStart) setSessionStart(new Date()); 
+      setIsActive(true);
+      intervalRef.current = setInterval(() => {
+        setSeconds(s => s + 1);
+      }, 1000);
+    }
   };
 
-  const handleToggle = () => setIsActive(!isActive);
+  const stopTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsActive(false);
+  };
 
-  const handleFinish = async () => {
-    // 1. Calculate time spent in this session
-    // (Start Time - End Time is better, but simpler math for now: 
-    // Default 25m (1500s) - Left (e.g. 300s) = 1200s used = 20 mins)
-    const usedSeconds = (25 * 60) - secondsLeft;
-    const usedMinutes = Math.floor(usedSeconds / 60);
+  const toggleTimer = () => {
+    isActive ? stopTimer() : startTimer();
+  };
 
-    if (usedMinutes < 1) {
-        Alert.alert("Abort?", "Session too short to record. Exit without saving?", [
-            { text: "Stay", style: "cancel" },
-            { text: "Exit", style: "destructive", onPress: () => navigation.goBack() }
-        ]);
-        return;
+  const formatTime = (totalSeconds: number) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleEndSession = async (markComplete: boolean) => {
+    stopTimer();
+    if (seconds < 60) {
+      Alert.alert("Session Too Short", "Focus time must be at least 1 minute to log.");
+      return;
     }
 
     setSaving(true);
     try {
-        // 2. Fetch latest task state (to get fresh Goal ID and Data)
-        // We need this because PUT requires ALL fields (Title, GoalID, etc.)
-        const taskRes = await client.get(`/tasks/${taskId}`);
-        const task = taskRes.data;
+        const endTime = new Date();
+        const startTime = sessionStart || new Date(); // Fallback
 
-        // 3. Update with new total time
-        const newTotal = (task.actualMinutes || 0) + usedMinutes;
-
-        await client.put(`/tasks/${taskId}`, {
-            title: task.title,
-            goalId: task.goal.id,
-            estimatedMinutes: task.estimatedMinutes,
-            dueDatetime: task.dueDatetime,
-            actualMinutes: newTotal, // <--- SAVING PROGRESS
-            status: 'IN_PROGRESS' // Auto-update status
+        // 1. Create TimeBlock (The Record of Work)
+        await client.post('/time-blocks', {
+            taskId: taskId,
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString()
         });
 
-        Alert.alert("Session Recorded", `+${usedMinutes} minutes logged.`);
+        // 2. Update Task Status (If Complete)
+        if (markComplete) {
+            await client.put(`/tasks/${taskId}/complete`);
+        }
+
+        // 3. Success Feedback
+        if (markComplete) {
+            Alert.alert("Mission Accomplished", "Task closed. Session recorded.");
+        } else {
+            Alert.alert("Session Logged", "Focus time added to your records.");
+        }
+        
         navigation.goBack();
+
     } catch (err) {
         console.error(err);
-        Alert.alert("Sync Error", "Could not save progress.");
+        Alert.alert("Error", "Failed to save session data.");
     } finally {
         setSaving(false);
     }
   };
 
+  // Confirmation Wrapper
+  const confirmEnd = (markComplete: boolean) => {
+    Alert.alert(
+        markComplete ? "Complete Mission?" : "Pause Session?",
+        markComplete 
+            ? "This will mark the objective as DONE and save your time." 
+            : "This will save your current focus time and leave the objective OPEN.",
+        [
+            { text: "Cancel", style: "cancel", onPress: () => isActive && startTimer() },
+            { text: "Confirm", onPress: () => handleEndSession(markComplete) }
+        ]
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} disabled={isActive}>
-            <ArrowLeft size={24} color={isActive ? "#333" : "#888"} />
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving}>
+            <ArrowLeft size={24} color="#666" />
         </TouchableOpacity>
-        <Text style={styles.statusText}>{isActive ? "FOCUS LINK: ACTIVE" : "SYSTEM IDLE"}</Text>
+        <Text style={styles.headerTitle}>FOCUS MODE</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.taskLabel}>CURRENT OBJECTIVE</Text>
-        <Text style={styles.taskTitle} numberOfLines={2}>{initialTitle}</Text>
+        {/* Task Title */}
+        <Text style={styles.taskTitle}>{initialTitle}</Text>
+        
+        {/* Timer Display */}
+        <View style={[styles.timerCircle, isActive ? styles.activeCircle : styles.inactiveCircle]}>
+            <Text style={styles.timerText}>{formatTime(seconds)}</Text>
+            <Text style={styles.subText}>SESSION TIME</Text>
+        </View>
 
-        {/* The Timer Display */}
-        <View style={[styles.timerCircle, isActive ? styles.timerActive : styles.timerIdle]}>
-            <Text style={[styles.timerText, isActive ? styles.textActive : styles.textIdle]}>
-                {formatTime(secondsLeft)}
-            </Text>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+            <Text style={styles.statLabel}>PREVIOUSLY LOGGED:</Text>
+            <Text style={styles.statValue}>{currentActualMinutes}m</Text>
         </View>
 
         {/* Controls */}
         <View style={styles.controls}>
+            {/* Toggle Play/Pause */}
+            <TouchableOpacity onPress={toggleTimer} style={styles.playBtn}>
+                {isActive ? <Pause size={48} color="#000" fill="#000" /> : <Play size={48} color="#000" fill="#000" />}
+            </TouchableOpacity>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actions}>
+            {/* STOP & SAVE (Keep Open) */}
             <TouchableOpacity 
-                style={[styles.btn, styles.playBtn]} 
-                onPress={handleToggle}
+                style={[styles.btn, styles.stopBtn]} 
+                onPress={() => confirmEnd(false)}
+                disabled={saving}
             >
-                {isActive ? <Pause size={32} color="#000" /> : <Play size={32} color="#000" fill="#000" />}
+                <Square size={20} color="#FF003C" fill="#FF003C" />
+                <Text style={[styles.btnText, { color: '#FF003C' }]}>STOP & SAVE</Text>
             </TouchableOpacity>
 
-            {!isActive && secondsLeft !== 25 * 60 && (
-                <TouchableOpacity style={[styles.btn, styles.stopBtn]} onPress={handleFinish} disabled={saving}>
-                    {saving ? <ActivityIndicator color="#000" /> : <CheckCircle size={32} color="#000" />}
-                </TouchableOpacity>
-            )}
+            {/* COMPLETE (Close Task) */}
+            <TouchableOpacity 
+                style={[styles.btn, styles.completeBtn]} 
+                onPress={() => confirmEnd(true)}
+                disabled={saving}
+            >
+                {saving ? <ActivityIndicator color="#000" /> : (
+                    <>
+                        <CheckCircle size={20} color="#000" />
+                        <Text style={[styles.btnText, { color: '#000' }]}>COMPLETE TASK</Text>
+                    </>
+                )}
+            </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050505' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center' },
-  statusText: { color: '#888', fontFamily: 'monospace', letterSpacing: 2, fontSize: 10 },
+  container: { flex: 1, backgroundColor: '#000' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, paddingTop: 60, alignItems: 'center' },
+  headerTitle: { color: '#666', fontWeight: 'bold', letterSpacing: 2 },
   
-  content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  taskLabel: { color: '#00F0FF', fontSize: 12, fontWeight: 'bold', letterSpacing: 2, marginBottom: 12 },
-  taskTitle: { color: '#EDEDED', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 48 },
-
-  timerCircle: {
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    marginBottom: 64,
+  content: { flex: 1, justifyContent: 'space-between', padding: 30, paddingBottom: 60 },
+  
+  taskTitle: { color: '#EDEDED', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  
+  timerCircle: { 
+    width: 280, height: 280, borderRadius: 140, 
+    borderWidth: 4, 
+    justifyContent: 'center', alignItems: 'center', alignSelf: 'center',
+    marginBottom: 40
   },
-  timerActive: { borderColor: '#0AFF60', shadowColor: '#0AFF60', shadowRadius: 20, shadowOpacity: 0.3, elevation: 10 },
-  timerIdle: { borderColor: '#333' },
+  activeCircle: { borderColor: '#00F0FF', backgroundColor: 'rgba(0, 240, 255, 0.05)' },
+  inactiveCircle: { borderColor: '#333', backgroundColor: 'transparent' },
   
-  timerText: { fontSize: 64, fontWeight: 'bold', fontVariant: ['tabular-nums'] },
-  textActive: { color: '#0AFF60' },
-  textIdle: { color: '#444' },
+  timerText: { color: '#EDEDED', fontSize: 64, fontWeight: 'bold', fontFamily: 'monospace' },
+  subText: { color: '#666', fontSize: 12, marginTop: 8, letterSpacing: 2 },
 
-  controls: { flexDirection: 'row', gap: 32 },
-  btn: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },
-  playBtn: { backgroundColor: '#EDEDED' },
-  stopBtn: { backgroundColor: '#0AFF60' },
+  statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20 },
+  statLabel: { color: '#666' },
+  statValue: { color: '#EDEDED', fontWeight: 'bold' },
+
+  controls: { alignItems: 'center', marginBottom: 40 },
+  playBtn: { 
+    width: 80, height: 80, borderRadius: 40, 
+    backgroundColor: '#EDEDED', 
+    justifyContent: 'center', alignItems: 'center' 
+  },
+
+  actions: { gap: 16 },
+  btn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 18, borderRadius: 12, gap: 12, borderWidth: 1 },
+  stopBtn: { borderColor: '#333', backgroundColor: '#111' },
+  completeBtn: { backgroundColor: '#00F0FF', borderColor: '#00F0FF' },
+  btnText: { fontWeight: 'bold', fontSize: 16, letterSpacing: 1 }
 });

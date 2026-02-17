@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Save, Trash2, Clock, Calendar, CheckCircle, Play } from 'lucide-react-native';
-import client from '../api/client';
+import { ArrowLeft, Save, Trash2, Clock, Calendar, Play, Bell } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { RootStackParamList } from '../../App';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
+import client from '../api/client';
 
 export default function TaskDetailScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { taskId } = route.params; // Get ID passed from Dashboard
+  const { taskId } = route.params;
 
   const [task, setTask] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Edit States
   const [title, setTitle] = useState('');
   const [minutes, setMinutes] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const [showReminderPicker, setShowReminderPicker] = useState(false);
+  const [reminderDate, setReminderDate] = useState(new Date());
 
   useEffect(() => {
     fetchTaskDetails();
@@ -28,7 +29,7 @@ export default function TaskDetailScreen() {
 
   const fetchTaskDetails = async () => {
     try {
-      const res = await client.get(`/tasks/${taskId}`); 
+      const res = await client.get(`/tasks/${taskId}`);
       setTask(res.data);
       setTitle(res.data.title);
       setMinutes(res.data.estimatedMinutes.toString());
@@ -47,7 +48,7 @@ export default function TaskDetailScreen() {
     try {
       await client.put(`/tasks/${taskId}`, {
         title,
-        estimatedMinutes: parseInt(minutes),
+        estimatedMinutes: parseInt(minutes) || 30,
         dueDatetime: date.toISOString(),
         goalId: task.goal.id,
         status: task.status
@@ -78,6 +79,44 @@ export default function TaskDetailScreen() {
         }
       }
     ]);
+  };
+
+  const handleScheduleReminderWithDate = async (selectedDate: Date) => {
+    try {
+        // 1. Validation
+        if (selectedDate <= new Date()) {
+            Alert.alert("Time Travel Error", "Reminder must be in the future.");
+            return;
+        }
+
+        // 2. Call Backend (Log it)
+        await client.post(`/tasks/${taskId}/reminders`, {
+            remindAt: selectedDate.toISOString()
+        });
+
+        // 3. Schedule Local Notification
+        const secondsFromNow = (selectedDate.getTime() - new Date().getTime()) / 1000;
+        
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: "Objective Reminder",
+                body: `Time to engage: ${title}`,
+                data: { taskId: taskId },
+                sound: true
+            },
+            trigger: {
+                seconds: secondsFromNow,
+            },
+        });
+
+        Alert.alert("System Locked", "Reminder set successfully.");
+        setShowReminderPicker(false);
+
+    } catch (err: any) {
+        console.error(err);
+        const msg = err.response?.data?.message || "Failed to sync reminder.";
+        Alert.alert("Error", msg);
+    }
   };
 
   if (loading) {
@@ -143,7 +182,7 @@ export default function TaskDetailScreen() {
             </View>
         </View>
 
-        {/* Goal Context (Read Only) */}
+        {/* Goal Context */}
         <View style={styles.group}>
             <Text style={styles.label}>LINKED GOAL</Text>
             <View style={styles.readOnlyBox}>
@@ -153,6 +192,7 @@ export default function TaskDetailScreen() {
             </View>
         </View>
 
+        {/* DUE DATE PICKER (For the Task itself) */}
         {showDatePicker && (
             <DateTimePicker
                 value={date}
@@ -163,12 +203,49 @@ export default function TaskDetailScreen() {
                 }}
             />
         )}
+
+        {/* REMINDER PICKER (For the Alert) */}
+        {showReminderPicker && (
+            <DateTimePicker
+                value={reminderDate}
+                mode="datetime"
+                display="default"
+                onChange={(e, d) => {
+                    if (e.type === 'set' && d) {
+                        setReminderDate(d);
+                        // Trigger logic immediately after selection
+                        Alert.alert(
+                            "Confirm Reminder",
+                            `Set alert for ${d.toLocaleTimeString()}?`,
+                            [
+                                { text: "Cancel", style: "cancel", onPress: () => setShowReminderPicker(false) },
+                                { text: "Confirm", onPress: () => handleScheduleReminderWithDate(d) }
+                            ]
+                        );
+                    } else {
+                        setShowReminderPicker(false);
+                    }
+                }}
+            />
+        )}
       </ScrollView>
 
-      {/* Save Action */}
+      {/* Footer Actions */}
       <View style={styles.footer}>
+        {/* Reminder Button */}
         <TouchableOpacity 
-            style={styles.focusBtn} 
+            style={styles.actionBtn} 
+            onPress={() => setShowReminderPicker(true)}
+        >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Bell size={20} color="#BC13FE" />
+                <Text style={styles.actionText}>SET REMINDER</Text>
+            </View>
+        </TouchableOpacity>
+
+        {/* Focus Button */}
+        <TouchableOpacity 
+            style={styles.actionBtn} 
             onPress={() => navigation.navigate('FocusMode', { 
                 taskId: taskId, 
                 initialTitle: title,
@@ -177,9 +254,11 @@ export default function TaskDetailScreen() {
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Play size={20} color="#000" fill="#000" />
-                <Text style={styles.focusText}>ENGAGE FOCUS</Text>
+                <Text style={styles.actionText}>ENGAGE FOCUS</Text>
             </View>
         </TouchableOpacity>
+
+        {/* Save Button */}
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
             {saving ? <ActivityIndicator color="#000" /> : (
                 <>
@@ -220,16 +299,16 @@ const styles = StyleSheet.create({
   readOnlyBox: { padding: 16, backgroundColor: '#0A0A0A', borderRadius: 8, borderWidth: 1, borderColor: '#1A1A1A' },
   readOnlyText: { color: '#666', fontStyle: 'italic' },
 
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#1A1A1A' },
-  saveBtn: { backgroundColor: '#00F0FF', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16, borderRadius: 8 },
-  saveText: { color: '#000', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
-
-  focusBtn: { 
+  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#1A1A1A', gap: 12 },
+  
+  actionBtn: { 
     backgroundColor: '#EDEDED', 
     padding: 16, 
     borderRadius: 8, 
     alignItems: 'center', 
-    marginBottom: 12
   },
-  focusText: { color: '#000', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+  actionText: { color: '#000', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+
+  saveBtn: { backgroundColor: '#00F0FF', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16, borderRadius: 8 },
+  saveText: { color: '#000', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
 });

@@ -1,5 +1,5 @@
 import "./global.css";
-import React from "react";
+import React, { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Home, Target, Calendar, BarChart3, RefreshCw } from "lucide-react-native";
+import * as Notifications from 'expo-notifications';
 
 import LoginScreen from "./src/screens/LoginScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
@@ -29,6 +30,17 @@ export type RootStackParamList = {
     currentActualMinutes: number;
   };
 };
+
+// 1. FIXED: Configure Notification Handler with ALL required properties
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true, 
+    shouldShowList: true,  
+  }),
+});
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -140,6 +152,15 @@ function AppNavigator() {
 }
 
 export default function App() {
+  useEffect(() => {
+    (async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Permission to notify was denied');
+      }
+    })();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
