@@ -29,12 +29,18 @@ export default function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
     setLoading(true);
 
     try {
-      await api.post('/tasks', {
+      const payload: any = {
         title,
         estimatedMinutes: parseInt(minutes),
-        goalId: parseInt(goalId),
         dueDatetime: new Date(dueDate).toISOString()
-      });
+      };
+
+      // Only add goalId if it exists and is a number
+      if (goalId && !isNaN(parseInt(goalId))) {
+        payload.goalId = parseInt(goalId);
+      }
+
+      await api.post('/tasks', payload);
       onSuccess(); 
     } catch (err) {
       console.error("Failed to create task", err);
