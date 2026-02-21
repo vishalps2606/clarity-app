@@ -54,10 +54,20 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        // FIX: Remove "*" and explicitly allow your frontend environments
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173", // Web (Vite)
+                "http://localhost:3000", // Web Alternative
+                "http://localhost:8081", // Mobile (Expo)
+                "exp://127.0.0.1:8081"   // Expo Go (Local)
+                // Add your future production URL here: "https://clarity.yourdomain.com"
+        ));
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
+        // FIX: Restrict headers to what we actually use
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

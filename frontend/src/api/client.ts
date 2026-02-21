@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api', // Connect to Spring Boot
+  baseURL: 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,13 +16,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor: Handle 401 (Unauthorized)
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login'; // Redirect to login if token dies
+    if (error.response && error.response.status === 401) {
+      console.warn("Session expired. Redirecting to login.");
+            localStorage.removeItem('token');
+      window.location.href = '/login'; 
     }
     return Promise.reject(error);
   }

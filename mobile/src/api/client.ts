@@ -1,15 +1,13 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store'; // Keep this for persistence!
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LOCAL_IP = process.env.EXPO_PUBLIC_LOCAL_IP || '192.168.1.5';
 
 const BASE_URL = Platform.select({
-    // Special IP for Android Emulator to reach PC localhost
     android: 'http://10.0.2.2:8080/api', 
-    // iOS Simulator / Physical Device (Uses LAN IP)
     ios: `http://${LOCAL_IP}:8080/api`,
-    // Web Browser
     web: 'http://localhost:8080/api', 
 });
 
@@ -33,13 +31,13 @@ client.interceptors.request.use(async (config) => {
   return config;
 });
 
-// 4. Response Logger (Helpful for debugging)
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Log the actual error message from backend if available
-    const message = error.response?.data?.message || error.message;
-    console.error(`API Error [${error.config?.url}]:`, message);
+  async (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn("Session expired. Clearing mobile token.");
+      await AsyncStorage.removeItem('token');
+    }
     return Promise.reject(error);
   }
 );
