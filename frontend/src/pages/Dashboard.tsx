@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
-import { TaskCard } from '../components/TaskCard';
+import TaskCard from '../components/TaskCard';
 import { Button } from '../components/Button';
 import Modal from '../components/Modal';
 import CreateTaskForm from '../components/CreateTaskForm';

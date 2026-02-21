@@ -5,6 +5,7 @@ import api from '../api/client';
 
 interface CreateTaskFormProps {
   onSuccess: () => void;
+  defaultGoalId?: number;
 }
 
 export default function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
@@ -19,22 +20,31 @@ export default function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
   useEffect(() => {
     api.get('/goals').then(res => {
         setGoals(res.data);
-        // Auto-select first goal if available
-        if (res.data.length > 0) setGoalId(res.data[0].id);
+        // Auto-select based on default OR first available
+        if (defaultGoalId) {
+            setGoalId(defaultGoalId.toString());
+        } else if (res.data.length > 0) {
+            setGoalId(res.data[0].id);
+        }
     });
-  }, []);
+  }, [defaultGoalId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await api.post('/tasks', {
+      const payload: any = {
         title,
         estimatedMinutes: parseInt(minutes),
-        goalId: parseInt(goalId),
         dueDatetime: new Date(dueDate).toISOString()
-      });
+      };
+
+      if (goalId && !isNaN(parseInt(goalId))) {
+        payload.goalId = parseInt(goalId);
+      }
+
+      await api.post('/tasks', payload);
       onSuccess(); 
     } catch (err) {
       console.error("Failed to create task", err);
