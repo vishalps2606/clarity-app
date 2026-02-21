@@ -17,7 +17,7 @@ interface TaskCardProps {
   onRefresh?: () => void; // Callback to refresh list after action
 }
 
-export function TaskCard({ task, onRefresh }: TaskCardProps) {
+export default function TaskCard({ task, onRefresh }: TaskCardProps) {
   const navigate = useNavigate();
   const isOverdue = new Date(task.dueDatetime) < new Date() && task.status !== 'DONE';
 

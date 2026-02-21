@@ -12,13 +12,20 @@ interface GoalCardProps {
   goal: Goal;
   totalTasks: number;
   completedTasks: number;
+  onClick?: () => void; // <--- NEW PROP
 }
 
-export function GoalCard({ goal, totalTasks, completedTasks }: GoalCardProps) {
+export function GoalCard({ goal, totalTasks, completedTasks, onClick }: GoalCardProps) {
   const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
   return (
-    <div className="bg-surface border border-border p-6 rounded-lg hover:border-neon-blue/50 transition-all duration-300 relative overflow-hidden group">
+    <div 
+      onClick={onClick} // <--- ADD ONCLICK
+      className={clsx(
+        "bg-surface border border-border p-6 rounded-lg transition-all duration-300 relative overflow-hidden group",
+        onClick ? "cursor-pointer hover:border-neon-blue hover:shadow-[0_0_15px_rgba(0,240,255,0.1)]" : "hover:border-neon-blue/50"
+      )}
+    >
       {/* Background Gradient for Priority */}
       <div className={clsx(
         "absolute top-0 right-0 p-2 rounded-bl-lg text-xs font-mono font-bold border-l border-b",

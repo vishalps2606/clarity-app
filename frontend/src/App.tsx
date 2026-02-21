@@ -8,6 +8,7 @@ import FocusMode from "./pages/FocusMode";
 import Goals from "./pages/Goals";
 import Insights from "./pages/Insights";
 import Tasks from "./pages/Tasks";
+import GoalDetail from "./pages/GoalDetail";
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -21,7 +22,6 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      {/* Protected Dashboard (Placeholder) */}
       <Route
         path="/dashboard"
         element={
@@ -46,6 +46,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      
       <Route
         path="/goals"
         element={
@@ -54,6 +55,16 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      
+      <Route
+        path="/goals/:goalId"
+        element={
+          <ProtectedRoute>
+            <GoalDetail />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/insights"
         element={

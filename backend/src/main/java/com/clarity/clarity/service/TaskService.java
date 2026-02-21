@@ -1,5 +1,6 @@
 package com.clarity.clarity.service;
 
+import com.clarity.clarity.domain.GoalStatus;
 import com.clarity.clarity.dto.request.TaskRequest;
 import com.clarity.clarity.entity.Goal;
 import com.clarity.clarity.entity.Task;
@@ -66,6 +67,26 @@ public class TaskService {
         taskRepository.save(task);
 
         activityLogService.log(taskId, "TASK_COMPLETED", "USER", java.util.Collections.emptyMap());
+
+        Goal goal = task.getGoal();
+        if (goal != null) {
+            boolean allDone = goal.getTasks().stream()
+                    .allMatch(t -> t.getStatus() == TaskStatus.DONE || t.getStatus() == TaskStatus.SKIPPED);
+
+            if (allDone && !goal.getTasks().isEmpty()) {
+                goal.setStatus(GoalStatus.DONE);
+                goalRepository.save(goal);
+            }
+        }
+    }
+
+    public List<Task> getTasksByGoal(Long goalId) {
+        Long userId = securityUtils.getCurrentUserId();
+
+        Goal goal = goalRepository.findByIdAndUserId(goalId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Goal not found or access denied"));
+
+        return taskRepository.findByGoalIdAndUserId(goal.getId(), userId);
     }
 
     public List<Task> getAllTasks() {

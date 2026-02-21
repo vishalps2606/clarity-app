@@ -39,4 +39,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     // For GET /tasks/{id} or updates
     Optional<Task> findByIdAndUserId(Long id, Long userId);
+
+    // Fetch all tasks belonging to a specific goal
+    List<Task> findByGoalIdAndUserId(Long goalId, Long userId);
 }
