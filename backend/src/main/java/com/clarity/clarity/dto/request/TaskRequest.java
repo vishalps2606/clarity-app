@@ -1,5 +1,6 @@
 package com.clarity.clarity.dto.request;
 
+import com.clarity.clarity.domain.RecurrenceType;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,7 @@ public record TaskRequest(
 
         Integer actualMinutes,
 
-//        @FutureOrPresent(message = "Due date cannot be in the past")
-        LocalDateTime dueDatetime
+        LocalDateTime dueDatetime,
+
+        RecurrenceType recurrenceType
 ) {}

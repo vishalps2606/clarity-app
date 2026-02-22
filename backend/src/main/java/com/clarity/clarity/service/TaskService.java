@@ -1,6 +1,7 @@
 package com.clarity.clarity.service;
 
 import com.clarity.clarity.domain.GoalStatus;
+import com.clarity.clarity.domain.RecurrenceType;
 import com.clarity.clarity.dto.request.TaskRequest;
 import com.clarity.clarity.entity.Goal;
 import com.clarity.clarity.entity.Task;
@@ -29,31 +30,30 @@ public class TaskService {
 
     @Transactional
     public Task createTask(TaskRequest request) {
-
-        if (request.dueDatetime() != null &&
-                request.dueDatetime().isBefore(java.time.LocalDateTime.now().minusMinutes(1))) {
+        if (request.dueDatetime() != null && request.dueDatetime().isBefore(java.time.LocalDateTime.now().minusMinutes(1))) {
             throw new IllegalArgumentException("Due date must be in the future");
         }
 
         Long userId = securityUtils.getCurrentUserId();
-
         Goal goal = goalRepository.findByIdAndUserId(request.goalId(), userId)
                 .orElseThrow(() -> new IllegalArgumentException("Goal not found or access denied"));
 
         Task task = new Task();
         task.setTitle(request.title());
-
         task.setGoal(goal);
-
         task.setEstimatedMinutes(request.estimatedMinutes());
         task.setDueDatetime(request.dueDatetime());
         task.setStatus(TaskStatus.READY);
         task.setUserId(userId);
 
+        if (request.recurrenceType() != null) {
+            task.setRecurrenceType(request.recurrenceType());
+        } else {
+            task.setRecurrenceType(RecurrenceType.NONE);
+        }
+
         Task savedTask = taskRepository.save(task);
-
         activityLogService.log(savedTask.getId(), "TASK_CREATED", "USER", Collections.emptyMap());
-
         return savedTask;
     }
 
@@ -68,6 +68,27 @@ public class TaskService {
 
         activityLogService.log(taskId, "TASK_COMPLETED", "USER", java.util.Collections.emptyMap());
 
+        if (task.getRecurrenceType() != null && task.getRecurrenceType() != RecurrenceType.NONE) {
+            Task nextTask = new Task();
+            nextTask.setTitle(task.getTitle());
+            nextTask.setGoal(task.getGoal());
+            nextTask.setEstimatedMinutes(task.getEstimatedMinutes());
+            nextTask.setUserId(userId);
+            nextTask.setRecurrenceType(task.getRecurrenceType());
+            nextTask.setStatus(TaskStatus.READY);
+
+            if (task.getDueDatetime() != null) {
+                java.time.LocalDateTime nextDue = switch (task.getRecurrenceType()) {
+                    case DAILY -> task.getDueDatetime().plusDays(1);
+                    case WEEKLY -> task.getDueDatetime().plusWeeks(1);
+                    case MONTHLY -> task.getDueDatetime().plusMonths(1);
+                    default -> task.getDueDatetime();
+                };
+                nextTask.setDueDatetime(nextDue);
+            }
+
+            taskRepository.save(nextTask);
+        }
         Goal goal = task.getGoal();
         if (goal != null) {
             boolean allDone = goal.getTasks().stream()
