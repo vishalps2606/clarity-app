@@ -5,22 +5,23 @@ import api from '../api/client';
 
 interface CreateTaskFormProps {
   onSuccess: () => void;
-  defaultGoalId?: number;
+  defaultGoalId?: number; 
 }
 
-export default function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
+export default function CreateTaskForm({ onSuccess, defaultGoalId }: CreateTaskFormProps) {
   const [title, setTitle] = useState('');
   const [minutes, setMinutes] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [goalId, setGoalId] = useState('');
+  const [goalId, setGoalId] = useState(defaultGoalId?.toString() || ''); 
   
+  const [recurrence, setRecurrence] = useState('NONE');
+
   const [goals, setGoals] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     api.get('/goals').then(res => {
         setGoals(res.data);
-        // Auto-select based on default OR first available
         if (defaultGoalId) {
             setGoalId(defaultGoalId.toString());
         } else if (res.data.length > 0) {
@@ -37,7 +38,8 @@ export default function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
       const payload: any = {
         title,
         estimatedMinutes: parseInt(minutes),
-        dueDatetime: new Date(dueDate).toISOString()
+        dueDatetime: new Date(dueDate).toISOString(),
+        recurrenceType: recurrence
       };
 
       if (goalId && !isNaN(parseInt(goalId))) {
@@ -58,7 +60,7 @@ export default function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input
         label="Objective Title"
-        placeholder="e.g. Deploy Production Database"
+        placeholder="e.g. Daily Gym Session"
         value={title}
         onChange={e => setTitle(e.target.value)}
         required
@@ -92,13 +94,31 @@ export default function CreateTaskForm({ onSuccess }: CreateTaskFormProps) {
         </div>
       </div>
 
-      <Input
-        label="Deadline"
-        type="datetime-local"
-        value={dueDate}
-        onChange={e => setDueDate(e.target.value)}
-        required
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+            label="First Deadline"
+            type="datetime-local"
+            value={dueDate}
+            onChange={e => setDueDate(e.target.value)}
+            required
+        />
+
+        <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-mono text-neon-blue/80 uppercase tracking-wider">
+                Recurrence Rule
+            </label>
+            <select 
+                className="bg-surface border border-border rounded px-4 py-3 text-text-primary focus:outline-none focus:border-neon-blue"
+                value={recurrence}
+                onChange={e => setRecurrence(e.target.value)}
+            >
+                <option value="NONE">Once (No Recurrence)</option>
+                <option value="DAILY">Daily</option>
+                <option value="WEEKLY">Weekly</option>
+                <option value="MONTHLY">Monthly</option>
+            </select>
+        </div>
+      </div>
 
       <div className="flex justify-end gap-3 mt-4">
         <Button type="submit" disabled={loading}>
