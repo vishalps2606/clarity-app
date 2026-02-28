@@ -3,6 +3,7 @@ package com.clarity.clarity.service;
 import com.clarity.clarity.domain.GoalStatus;
 import com.clarity.clarity.domain.RecurrenceType;
 import com.clarity.clarity.dto.request.TaskRequest;
+import com.clarity.clarity.dto.response.TaskResponse;
 import com.clarity.clarity.entity.Goal;
 import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.repository.GoalRepository;
@@ -15,8 +16,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -66,8 +71,6 @@ public class TaskService {
         task.setStatus(TaskStatus.DONE);
         taskRepository.save(task);
 
-        activityLogService.log(taskId, "TASK_COMPLETED", "USER", java.util.Collections.emptyMap());
-
         if (task.getRecurrenceType() != null && task.getRecurrenceType() != RecurrenceType.NONE) {
             Task nextTask = new Task();
             nextTask.setTitle(task.getTitle());
@@ -75,17 +78,11 @@ public class TaskService {
             nextTask.setEstimatedMinutes(task.getEstimatedMinutes());
             nextTask.setUserId(userId);
             nextTask.setRecurrenceType(task.getRecurrenceType());
+            nextTask.setRecurrencePattern(task.getRecurrencePattern());
             nextTask.setStatus(TaskStatus.READY);
 
-            if (task.getDueDatetime() != null) {
-                java.time.LocalDateTime nextDue = switch (task.getRecurrenceType()) {
-                    case DAILY -> task.getDueDatetime().plusDays(1);
-                    case WEEKLY -> task.getDueDatetime().plusWeeks(1);
-                    case MONTHLY -> task.getDueDatetime().plusMonths(1);
-                    default -> task.getDueDatetime();
-                };
-                nextTask.setDueDatetime(nextDue);
-            }
+            LocalDateTime baseDate = (task.getDueDatetime() != null) ? task.getDueDatetime() : LocalDateTime.now();
+            nextTask.setDueDatetime(calculateNextOccurrence(baseDate, task.getRecurrenceType(), task.getRecurrencePattern()));
 
             taskRepository.save(nextTask);
         }
@@ -99,6 +96,44 @@ public class TaskService {
                 goalRepository.save(goal);
             }
         }
+    }
+
+    private LocalDateTime calculateNextOccurrence(LocalDateTime current, RecurrenceType type, String pattern) {
+        if (type == RecurrenceType.DAILY) {
+            if (pattern != null && !pattern.isEmpty()) {
+                return findNextDayInPattern(current, pattern);
+            }
+            return current.plusDays(1);
+        }
+        if (type == RecurrenceType.WEEKLY) return current.plusWeeks(1);
+        if (type == RecurrenceType.MONTHLY) return current.plusMonths(1);
+        return current.plusDays(1);
+    }
+
+    private LocalDateTime findNextDayInPattern(LocalDateTime current, String pattern) {
+        var activeDays = Arrays.stream(pattern.split(","))
+                .map(String::trim)
+                .map(String::toUpperCase)
+                .map(DayOfWeek::valueOf)
+                .collect(Collectors.toSet());
+
+        LocalDateTime next = current;
+        for (int i = 1; i <= 7; i++) {
+            next = next.plusDays(1);
+            if (activeDays.contains(next.getDayOfWeek())) {
+                return next;
+            }
+        }
+        return current.plusDays(1);
+    }
+
+    // Helper for Controller mapping
+    public TaskResponse mapToResponse(Task task) {
+        return new TaskResponse(
+                task.getId(), task.getTitle(), task.getStatus(), task.getDueDatetime(),
+                task.getEstimatedMinutes(), task.getActualMinutes(), task.getRecurrenceType(),
+                task.getRecurrencePattern(), task.getGoal().getId(), task.getGoal().getTitle()
+        );
     }
 
     public List<Task> getTasksByGoal(Long goalId) {
