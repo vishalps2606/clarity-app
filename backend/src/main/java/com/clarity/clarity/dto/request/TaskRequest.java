@@ -21,5 +21,7 @@ public record TaskRequest(
 
         LocalDateTime dueDatetime,
 
-        RecurrenceType recurrenceType
+        RecurrenceType recurrenceType,
+
+        String recurrencePattern
 ) {}

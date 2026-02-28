@@ -52,4 +52,7 @@ public class Task {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RecurrenceType recurrenceType = RecurrenceType.NONE;
+
+    @Column(length = 255)
+    private String recurrencePattern;
 }

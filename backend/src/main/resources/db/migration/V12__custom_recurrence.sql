@@ -1,0 +1,1 @@
+ALTER TABLE tasks ADD COLUMN recurrence_pattern VARCHAR(255);
