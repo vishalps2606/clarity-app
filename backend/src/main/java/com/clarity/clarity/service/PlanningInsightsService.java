@@ -28,7 +28,7 @@ public class PlanningInsightsService {
         Long userId = securityUtils.getCurrentUserId();
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
 
-        List<Task> recentTasks = taskRepository.findAllByUserId(userId).stream()
+        List<Task> recentTasks = taskRepository.findAllByUserIdAndDeletedFalse(userId).stream()
                 .filter(t -> t.getCreatedAt().isAfter(sevenDaysAgo))
                 .toList();
 

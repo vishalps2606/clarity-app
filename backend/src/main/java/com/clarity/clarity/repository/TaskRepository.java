@@ -14,32 +14,34 @@ import java.util.Optional;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    // --- SYSTEM QUERIES (For Schedulers ONLY) ---
-    // NO userId filter here, because the System must process everyone's data.
+    // --- SYSTEM QUERIES (For Schedulers) ---
     @Query("""
         SELECT t FROM Task t
         WHERE t.dueDatetime IS NOT NULL
           AND t.dueDatetime < :now
           AND t.status IN :statuses
           AND t.needsReview = false
-    """)
+          AND t.deleted = false
+    """) // Added deleted = false check
     List<Task> findAllOverdueTasksForSystem(
             @Param("now") LocalDateTime now,
             @Param("statuses") List<TaskStatus> statuses
     );
 
-    // --- USER QUERIES (For API) ---
-    // STRICTLY filtered by userId.
+    // --- USER QUERIES (Strictly User-Scoped & Filter Deleted) ---
 
-    // For GET /tasks/review
-    List<Task> findByNeedsReviewTrueAndUserId(Long userId);
+    // Standard fetches
+    List<Task> findAllByUserIdAndDeletedFalse(Long userId);
 
-    // For GET /tasks
-    List<Task> findAllByUserId(Long userId);
+    Optional<Task> findByIdAndUserIdAndDeletedFalse(Long id, Long userId);
 
-    // For GET /tasks/{id} or updates
-    Optional<Task> findByIdAndUserId(Long id, Long userId);
+    // Filtered fetches
+    List<Task> findByNeedsReviewTrueAndUserIdAndDeletedFalse(Long userId);
 
-    // Fetch all tasks belonging to a specific goal
-    List<Task> findByGoalIdAndUserId(Long goalId, Long userId);
+    List<Task> findByGoalIdAndUserIdAndDeletedFalse(Long goalId, Long userId);
+
+    // Logic checks
+    boolean existsByUserIdAndTitleAndGoalIdAndDueDatetimeAndDeletedFalse(
+            Long userId, String title, Long goalId, LocalDateTime dueDatetime
+    );
 }

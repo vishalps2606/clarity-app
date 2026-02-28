@@ -55,4 +55,7 @@ public class Task {
 
     @Column(length = 255)
     private String recurrencePattern;
+
+    @Column(nullable = false)
+    private boolean deleted = false;
 }

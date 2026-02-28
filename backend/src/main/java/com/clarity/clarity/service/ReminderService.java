@@ -26,10 +26,9 @@ public class ReminderService {
 
     @Transactional
     public void createReminder(Long taskId, ReminderRequest request) throws BadRequestException {
-        Long userId = securityUtils.getCurrentUserId(); // <--- GET USER
+        Long userId = securityUtils.getCurrentUserId();
 
-        // FIX: Check ownership
-        Task task = taskRepository.findByIdAndUserId(taskId, userId)
+        Task task = taskRepository.findByIdAndUserIdAndDeletedFalse(taskId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found or access denied"));
 
         if (task.getStatus() == TaskStatus.DONE || task.getStatus() == TaskStatus.SKIPPED) { // Use Enum
