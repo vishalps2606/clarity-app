@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Home, Target, Calendar, BarChart3, RefreshCw } from "lucide-react-native";
 import * as Notifications from 'expo-notifications';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import LoginScreen from "./src/screens/LoginScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
@@ -18,12 +19,17 @@ import GoalsScreen from "./src/screens/GoalsScreen";
 import InsightsScreen from "./src/screens/InsightsScreen";
 import ReviewScreen from "./src/screens/ReviewScreen";
 import ScheduleScreen from "./src/screens/ScheduleScreen";
+import GoalDetailScreen from "./src/screens/GoalDetailScreen"; 
 
+const queryClient = new QueryClient();
+
+// 1. DEFINE ROOT PARAMS (Used for type safety across the app)
 export type RootStackParamList = {
   Login: undefined;
-  Dashboard: undefined;
+  Main: undefined;
   CreateTask: undefined;
   TaskDetail: { taskId: number };
+  GoalDetail: { goalId: number }; // ADD THIS
   FocusMode: {
     taskId: number;
     initialTitle: string;
@@ -31,7 +37,6 @@ export type RootStackParamList = {
   };
 };
 
-// 1. FIXED: Configure Notification Handler with ALL required properties
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -42,7 +47,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const Stack = createNativeStackNavigator();
+// 2. APPLY PARAMS TO STACK
+const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
@@ -110,14 +116,7 @@ function AppNavigator() {
 
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#050505",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
+      <View style={{ flex: 1, backgroundColor: "#050505", justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#00F0FF" />
       </View>
     );
@@ -134,13 +133,13 @@ function AppNavigator() {
         {token ? (
           <Stack.Group>
             <Stack.Screen name="Main" component={MainTabs} />
-
             <Stack.Screen
               name="CreateTask"
               component={CreateTaskScreen}
               options={{ presentation: "modal" }}
             />
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+            <Stack.Screen name="GoalDetail" component={GoalDetailScreen} /> {/* REGISTER THIS */}
             <Stack.Screen name="FocusMode" component={FocusModeScreen} />
           </Stack.Group>
         ) : (
@@ -162,10 +161,12 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppNavigator />
+        <SafeAreaProvider>
+            <AppNavigator/>
+        </SafeAreaProvider>
       </AuthProvider>
-    </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
