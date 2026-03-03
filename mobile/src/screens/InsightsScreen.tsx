@@ -1,141 +1,167 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { BarChart } from 'react-native-chart-kit';
-import { Activity, Clock, CheckCircle } from 'lucide-react-native';
-import client from '../api/client';
-
-const screenWidth = Dimensions.get("window").width;
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Dimensions,
+} from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { Brain, Target, Zap, AlertCircle } from "lucide-react-native";
+import { PieChart } from "react-native-chart-kit";
+import client from "../api/client";
 
 export default function InsightsScreen() {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  // 1. FETCH FROM SERVER
+  const { data: insights, isLoading } = useQuery({
+    queryKey: ["insights-weekly"],
+    queryFn: async () => {
+      const res = await client.get("/insights/weekly");
+      return res.data;
+    },
+  });
 
-  const fetchInsights = async () => {
-    try {
-      // Fetch all tasks to crunch numbers locally
-      const res = await client.get('/tasks');
-      const tasks = res.data;
-
-      // 1. Calculate Total Focus Time (Sum of actualMinutes)
-      const totalMinutes = tasks.reduce((acc: number, t: any) => acc + (t.actualMinutes || 0), 0);
-      
-      // 2. Calculate Completion Rate
-      const completed = tasks.filter((t: any) => t.status === 'DONE').length;
-      const totalTasks = tasks.length;
-
-      // 3. Mock Weekly Data 
-      // (This visualizes "Activity". In a real V2, we fetch this from backend)
-      const mockWeeklyData = {
-        labels: ["M", "T", "W", "T", "F", "S", "S"],
-        datasets: [{
-          // Just injecting the totalMinutes into today's slot for visual feedback
-          data: [20, 45, 28, 60, 35, 10, totalMinutes > 10 ? totalMinutes : 15] 
-        }]
-      };
-
-      setStats({
-        totalMinutes,
-        completed,
-        totalTasks,
-        chartData: mockWeeklyData
-      });
-
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchInsights();
-    }, [])
-  );
-
-  if (loading || !stats) {
+  if (isLoading) {
     return (
-        <View style={styles.center}>
-            <ActivityIndicator size="large" color="#00F0FF" />
-        </View>
+      <View style={styles.loader}>
+        <ActivityIndicator color="#00F0FF" />
+        <Text style={styles.loaderText}>ANALYZING PERFORMANCE...</Text>
+      </View>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchInsights(); }} tintColor="#00F0FF" />}
-      >
-        <Text style={styles.headerTitle}>SYSTEM ANALYTICS</Text>
+  const chartData = [
+    {
+      name: "Done",
+      population: insights?.completedTasks || 0,
+      color: "#0AFF60",
+      legendFontColor: "#888",
+      legendFontSize: 10,
+    },
+    {
+      name: "Slipped",
+      population: insights?.slippageCount || 0,
+      color: "#FF003C",
+      legendFontColor: "#888",
+      legendFontSize: 10,
+    },
+    {
+      name: "Open",
+      population: (insights?.totalTasks || 0) - (insights?.completedTasks || 0),
+      color: "#333",
+      legendFontColor: "#888",
+      legendFontSize: 10,
+    },
+  ];
 
-        {/* HUD Grid */}
-        <View style={styles.grid}>
-            <View style={styles.card}>
-                <Clock size={24} color="#00F0FF" style={styles.icon} />
-                <Text style={styles.cardLabel}>FOCUS TIME</Text>
-                <Text style={styles.cardValue}>{stats.totalMinutes}m</Text>
-            </View>
-            <View style={styles.card}>
-                <CheckCircle size={24} color="#0AFF60" style={styles.icon} />
-                <Text style={styles.cardLabel}>COMPLETED</Text>
-                <Text style={styles.cardValue}>{stats.completed}</Text>
-            </View>
-            <View style={styles.card}>
-                <Activity size={24} color="#BC13FE" style={styles.icon} />
-                <Text style={styles.cardLabel}>EFFICIENCY</Text>
-                <Text style={styles.cardValue}>
-                    {stats.totalTasks > 0 ? Math.round((stats.completed / stats.totalTasks) * 100) : 0}%
-                </Text>
-            </View>
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>INTELLIGENCE</Text>
+      </View>
+
+      {/* SERVER FEEDBACK */}
+      <View style={styles.feedbackCard}>
+        <Brain color="#00F0FF" size={24} />
+        <Text style={styles.feedbackText}>{insights?.feedback}</Text>
+      </View>
+
+      <View style={styles.grid}>
+        <View style={styles.statBox}>
+          <Target color="#0AFF60" size={18} />
+          <Text style={styles.statValue}>{insights?.completionRate}%</Text>
+          <Text style={styles.statLabel}>SUCCESS RATE</Text>
         </View>
 
-        {/* Chart Section */}
-        <Text style={styles.sectionTitle}>ACTIVITY LOG (WEEKLY ESTIMATE)</Text>
-        <BarChart
-            data={stats.chartData}
-            width={screenWidth - 40}
-            height={220}
-            yAxisLabel=""
-            yAxisSuffix="m"
-            chartConfig={{
-                backgroundColor: "#121212",
-                backgroundGradientFrom: "#1E1E1E",
-                backgroundGradientTo: "#121212",
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(0, 240, 255, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(136, 136, 136, ${opacity})`,
-                barPercentage: 0.6,
-                propsForBackgroundLines: {
-                    strokeWidth: 1,
-                    stroke: "#333",
-                    strokeDasharray: "0",
-                },
-            }}
-            style={styles.chart}
-            showValuesOnTopOfBars={true}
+        <View style={styles.statBox}>
+          <Zap color="#BC13FE" size={18} />
+          <Text style={styles.statValue}>{insights?.avgErrorMinutes}m</Text>
+          <Text style={styles.statLabel}>AVG TIME ERROR</Text>
+        </View>
+      </View>
+
+      <View style={styles.chartSection}>
+        <Text style={styles.sectionTitle}>TACTICAL VOLUME</Text>
+        <PieChart
+          data={chartData}
+          width={Dimensions.get("window").width - 40}
+          height={180}
+          chartConfig={{
+            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+          }}
+          accessor="population"
+          backgroundColor="transparent"
+          paddingLeft="15"
+          absolute
         />
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050505' },
-  center: { flex: 1, backgroundColor: '#050505', justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 20 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#EDEDED', letterSpacing: 1, marginBottom: 24 },
-  
-  grid: { flexDirection: 'row', gap: 12, marginBottom: 32 },
-  card: { flex: 1, backgroundColor: '#121212', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#2A2A2A', minHeight: 120, justifyContent: 'center' },
-  icon: { marginBottom: 12 },
-  cardLabel: { color: '#888', fontSize: 10, fontWeight: 'bold', marginBottom: 4, letterSpacing: 1 },
-  cardValue: { color: '#EDEDED', fontSize: 24, fontWeight: 'bold' },
-
-  sectionTitle: { color: '#888', fontSize: 12, fontWeight: 'bold', marginBottom: 16, letterSpacing: 1 },
-  chart: { borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A' }
+  container: { flex: 1, backgroundColor: "#050505" },
+  header: { padding: 20, paddingTop: 60 },
+  headerTitle: { color: "#666", fontWeight: "bold", letterSpacing: 2 },
+  loader: {
+    flex: 1,
+    backgroundColor: "#050505",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loaderText: {
+    color: "#00F0FF",
+    marginTop: 15,
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  feedbackCard: {
+    margin: 20,
+    padding: 20,
+    backgroundColor: "rgba(0, 240, 255, 0.05)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0, 240, 255, 0.1)",
+    flexDirection: "row",
+    gap: 15,
+    alignItems: "center",
+  },
+  feedbackText: {
+    color: "#EDEDED",
+    flex: 1,
+    fontSize: 14,
+    fontStyle: "italic",
+    lineHeight: 20,
+  },
+  grid: { flexDirection: "row", paddingHorizontal: 20, gap: 15 },
+  statBox: {
+    flex: 1,
+    backgroundColor: "#121212",
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+  },
+  statValue: {
+    color: "#FFF",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginVertical: 8,
+  },
+  statLabel: { color: "#444", fontSize: 10, fontWeight: "bold" },
+  chartSection: {
+    margin: 20,
+    padding: 20,
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+  },
+  sectionTitle: {
+    color: "#666",
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
 });

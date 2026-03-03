@@ -15,8 +15,8 @@ export default function GoalDetail() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 1. FETCH TASKS FOR THIS SPECIFIC GOAL
-  const { data: tasks = [], isLoading, refetch } = useQuery({
+  // 1. Fetch Tasks
+  const { data: tasks = [], isLoading: tasksLoading, refetch } = useQuery({
     queryKey: ['goal-tasks', goalId],
     queryFn: async () => {
       const res = await api.get(`/goals/${goalId}/tasks`);
@@ -24,57 +24,53 @@ export default function GoalDetail() {
     }
   });
 
-  // 2. FETCH GOAL INFO (Finding it from the cached 'goals' list)
-  const goalsData: any[] | undefined = queryClient.getQueryData(['goals']);
-  const goal = goalsData?.find((g: any) => g.id === Number(goalId));
+  const { data: goals = [], isLoading: goalsLoading } = useQuery({
+    queryKey: ['goals'],
+    queryFn: async () => {
+      const res = await api.get('/goals');
+      return res.data;
+    }
+  });
 
-  if (isLoading) return (
+  const goal = goals.find((g: any) => g.id === Number(goalId));
+
+  if (tasksLoading || goalsLoading) return (
     <AppLayout>
-      <div className="flex items-center gap-3 text-neon-blue font-mono p-8">
-        <Loader2 className="animate-spin" size={20} />
-        Synchronizing tactical data...
+      <div className="flex items-center gap-3 text-neon-blue font-mono p-8 animate-pulse">
+        <Loader2 className="animate-spin" size={20} /> SYNCHRONIZING TACTICAL DATA...
       </div>
     </AppLayout>
   );
 
-  if (!goal && !isLoading) return <AppLayout><div className="text-neon-red font-mono p-8">Target Strategy Not Found.</div></AppLayout>;
+  if (!goal) return <AppLayout><div className="text-neon-red font-mono p-8 uppercase">Error: Strategic Target Not Found.</div></AppLayout>;
 
   return (
     <AppLayout>
-      <button 
-          onClick={() => navigate('/goals')}
-          className="flex items-center gap-2 text-text-secondary hover:text-white mb-6 transition-colors font-mono text-sm"
-      >
-          <ArrowLeft size={16} /> RETURN TO STRATEGY MAP
+      <button onClick={() => navigate('/goals')} className="flex items-center gap-2 text-text-secondary hover:text-white mb-6 transition-colors font-mono text-xs uppercase tracking-widest">
+          <ArrowLeft size={14} /> Strategy Map
       </button>
 
       <header className="flex justify-between items-start mb-8 pb-8 border-b border-border">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Target className="text-neon-purple" size={24} />
-            <h2 className="text-3xl font-bold text-text-primary uppercase tracking-tight">{goal?.title}</h2>
+            <h2 className="text-3xl font-bold text-text-primary uppercase tracking-tight">{goal.title}</h2>
           </div>
           <div className="flex gap-4 text-[10px] font-mono mt-2">
-            <span className="text-neon-purple border border-neon-purple/30 bg-neon-purple/5 px-2 py-1 rounded">PRIORITY: {goal?.priority}</span>
-            <span className="text-text-secondary border border-border bg-surface px-2 py-1 rounded">STATUS: {goal?.status}</span>
+            <span className="text-neon-purple border border-neon-purple/30 bg-neon-purple/10 px-2 py-1 rounded">PRIORITY: {goal.priority}</span>
+            <span className="text-text-secondary border border-border bg-surface px-2 py-1 rounded">STATUS: {goal.status}</span>
           </div>
         </div>
-        <Button 
-            className="flex items-center gap-2" 
-            onClick={() => setIsModalOpen(true)}
-        >
-          <Plus size={18} />
-          Add Objective
+        <Button className="flex items-center gap-2" onClick={() => setIsModalOpen(true)}>
+          <Plus size={18} /> Add Objective
         </Button>
       </header>
 
       <div>
-        <h3 className="text-lg font-bold text-text-primary mb-6 flex items-center gap-2">
-           Tactical Objectives
-        </h3>
+        <h3 className="text-lg font-bold text-text-primary mb-6">Linked Tactical Objectives</h3>
         {tasks.length === 0 ? (
-          <div className="text-center p-12 border border-dashed border-border rounded-lg text-text-muted bg-surface/10">
-             No tactical objectives assigned to this strategy.
+          <div className="text-center p-12 border border-dashed border-border rounded-lg text-text-muted bg-surface/10 italic font-mono text-sm">
+             No tactical objectives assigned to this sector.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -85,19 +81,12 @@ export default function GoalDetail() {
         )}
       </div>
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
-        title="DEPLOY NEW TACTICAL OBJECTIVE"
-      >
-        <CreateTaskForm 
-            defaultGoalId={Number(goalId)} 
-            onSuccess={() => {
-                setIsModalOpen(false);
-                refetch();
-                queryClient.invalidateQueries({ queryKey: ['goals'] });
-            }} 
-        />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="DEPLOY NEW OBJECTIVE">
+        <CreateTaskForm defaultGoalId={Number(goalId)} onSuccess={() => {
+            setIsModalOpen(false);
+            refetch();
+            queryClient.invalidateQueries({ queryKey: ['goals'] });
+        }} />
       </Modal>
     </AppLayout>
   );

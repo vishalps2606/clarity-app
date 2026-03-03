@@ -139,7 +139,7 @@ function AppNavigator() {
               options={{ presentation: "modal" }}
             />
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
-            <Stack.Screen name="GoalDetail" component={GoalDetailScreen} /> {/* REGISTER THIS */}
+            <Stack.Screen name="GoalDetail" component={GoalDetailScreen} />
             <Stack.Screen name="FocusMode" component={FocusModeScreen} />
           </Stack.Group>
         ) : (
