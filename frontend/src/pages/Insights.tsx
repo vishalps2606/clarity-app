@@ -1,141 +1,109 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import AppLayout from '../layouts/AppLayout';
-import { StatCard } from '../components/StatCard';
 import api from '../api/client';
-import { Activity, CheckCircle, AlertOctagon, TrendingUp, BrainCircuit } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { 
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie 
+} from 'recharts';
+import { Brain, Target, Zap, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function Insights() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // 1. FETCH INSIGHTS FROM BACKEND
+  const { data: insights, isLoading } = useQuery({
+    queryKey: ['insights-weekly'],
+    queryFn: async () => {
+      const res = await api.get('/insights/weekly');
+      return res.data; // PlanningInsightsResponse DTO
+    }
+  });
 
-  useEffect(() => {
-    api.get('/insights/weekly')
-       .then(res => setData(res.data))
-       .catch(err => console.error("Failed to load insights"))
-       .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return (
+  if (isLoading) return (
     <AppLayout>
-        <div className="h-full flex flex-col items-center justify-center text-neon-blue font-mono animate-pulse">
-            <BrainCircuit size={48} className="mb-4" />
-            ANALYZING NEURAL PATTERNS...
-        </div>
+      <div className="flex items-center justify-center h-full text-neon-blue font-mono">
+        <Loader2 className="animate-spin mr-2" /> ANALYZING PERFORMANCE TRENDS...
+      </div>
     </AppLayout>
   );
 
-  // Prepare Chart Data
-  const chartData = [
-    { name: 'Completed', value: data.completedTasks },
-    { name: 'Incomplete', value: data.totalTasks - data.completedTasks },
+  // Map backend data to chart formats
+  const completionData = [
+    { name: 'Completed', value: insights?.completedTasks || 0, color: '#0AFF60' },
+    { name: 'Slipped', value: insights?.slippageCount || 0, color: '#FF003C' },
+    { name: 'Remaining', value: (insights?.totalTasks || 0) - (insights?.completedTasks || 0) - (insights?.slippageCount || 0), color: '#333' }
   ];
-  
-  const COLORS = ['#0AFF60', '#2A2A2A']; // Neon Green vs Dark Gray
 
   return (
     <AppLayout>
       <header className="mb-8">
-        <h2 className="text-3xl font-bold text-text-primary">Weekly Report</h2>
-        <p className="text-text-secondary">Performance analysis for the last 7 days.</p>
+        <h2 className="text-3xl font-bold text-text-primary uppercase tracking-tighter">Strategic Intelligence</h2>
+        <p className="text-text-secondary font-mono text-sm">7-Day Operations Review</p>
       </header>
 
-      {/* THE VERDICT (AI Feedback) */}
-      <div className="bg-surface border-l-4 border-neon-purple p-6 rounded-r-lg mb-8 shadow-[0_0_20px_rgba(188,19,254,0.1)]">
-        <h3 className="text-neon-purple font-mono text-xs uppercase tracking-widest mb-2">System Verdict</h3>
-        <p className="text-xl md:text-2xl font-medium text-text-primary italic">
-          "{data.feedbackMessage}"
-        </p>
+      {/* AI FEEDBACK PANEL */}
+      <div className="bg-neon-blue/5 border border-neon-blue/20 p-6 rounded-lg mb-10 flex items-start gap-4">
+        <Brain className="text-neon-blue shrink-0" size={32} />
+        <div>
+          <h4 className="text-neon-blue font-mono font-bold text-xs uppercase mb-1">Command Analysis</h4>
+          <p className="text-text-primary text-lg italic leading-relaxed">
+            "{insights?.feedback || "Insufficient data for analysis. Deploy more objectives."}"
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard 
-          label="Completion Rate"
-          value={`${data.completionPercentage}%`}
-          icon={<CheckCircle size={24} />}
-          trend={data.completionPercentage > 80 ? 'positive' : data.completionPercentage < 50 ? 'negative' : 'neutral'}
-          description="Tasks completed vs. planned."
-        />
-        
-        <StatCard 
-          label="Slippage"
-          value={`${data.slippagePercentage}%`}
-          icon={<AlertOctagon size={24} />}
-          trend={data.slippagePercentage > 20 ? 'negative' : 'positive'}
-          description="Tasks delayed or rescheduled."
-        />
-
-        <StatCard 
-          label="Est. Accuracy"
-          value={`${data.avgEstimationErrorMinutes > 0 ? '+' : ''}${data.avgEstimationErrorMinutes}m`}
-          icon={<Activity size={24} />}
-          trend={Math.abs(data.avgEstimationErrorMinutes) > 30 ? 'negative' : 'positive'}
-          description="Avg difference between plan & reality."
-        />
-
-        <StatCard 
-          label="Total Volume"
-          value={data.totalTasks}
-          icon={<TrendingUp size={24} />}
-          description="Total tasks processed this week."
-        />
-      </div>
-
-      {/* VISUALIZATION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart Card */}
-        <div className="bg-surface border border-border p-6 rounded-lg flex flex-col items-center justify-center">
-             <h4 className="text-sm font-mono text-text-secondary w-full text-left mb-4">EXECUTION RATIO</h4>
-             <div className="w-full h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={chartData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                        >
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip 
-                            contentStyle={{ backgroundColor: '#121212', borderColor: '#2A2A2A', color: '#EDEDED' }}
-                            itemStyle={{ color: '#00F0FF' }}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-             </div>
-             <div className="flex gap-6 mt-4 text-xs font-mono">
-                 <div className="flex items-center gap-2">
-                     <div className="w-3 h-3 bg-neon-green rounded-full" />
-                     <span>Completed</span>
-                 </div>
-                 <div className="flex items-center gap-2">
-                     <div className="w-3 h-3 bg-border rounded-full" />
-                     <span>Incomplete</span>
-                 </div>
-             </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* KPI GRID */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-surface border border-border p-6 rounded-lg">
+            <Target className="text-neon-green mb-4" size={20} />
+            <p className="text-text-secondary text-[10px] font-mono uppercase">Completion Rate</p>
+            <p className="text-3xl font-bold text-text-primary">{insights?.completionRate}%</p>
+          </div>
+          <div className="bg-surface border border-border p-6 rounded-lg">
+            <Zap className="text-neon-purple mb-4" size={20} />
+            <p className="text-text-secondary text-[10px] font-mono uppercase">Efficiency Gap</p>
+            <p className="text-3xl font-bold text-text-primary">{insights?.avgErrorMinutes}m</p>
+          </div>
+          <div className="bg-surface border border-border p-6 rounded-lg">
+            <AlertTriangle className="text-neon-red mb-4" size={20} />
+            <p className="text-text-secondary text-[10px] font-mono uppercase">Slippage Rate</p>
+            <p className="text-3xl font-bold text-text-primary">{insights?.slippageRate}%</p>
+          </div>
+          <div className="bg-surface border border-border p-6 rounded-lg">
+            <div className="h-5 w-5 rounded-full border-2 border-text-muted mb-4" />
+            <p className="text-text-secondary text-[10px] font-mono uppercase">Total Volume</p>
+            <p className="text-3xl font-bold text-text-primary">{insights?.totalTasks}</p>
+          </div>
         </div>
 
-        {/* Text Summary Card */}
-        <div className="bg-surface border border-border p-6 rounded-lg">
-            <h4 className="text-sm font-mono text-text-secondary mb-4">KEY METRICS EXPLAINED</h4>
-            <div className="space-y-4 text-sm text-text-muted">
-                <p>
-                    <strong className="text-text-primary">Slippage:</strong> A high percentage means you are pushing tasks to "Tomorrow" too often. If this is red, stop hitting the "Delay" button.
-                </p>
-                <p>
-                    <strong className="text-text-primary">Estimation Error:</strong> If this is positive (e.g., +45m), you are underestimating how long things take. Add buffer time to your next Focus Session.
-                </p>
-                <p>
-                    <strong className="text-text-primary">Feedback Loop:</strong> This report refreshes every Monday. Use today's data to plan your next Goal.
-                </p>
-            </div>
+        {/* DISTRIBUTION CHART */}
+        <div className="bg-surface border border-border p-8 rounded-lg min-h-[300px]">
+          <h4 className="text-text-primary font-bold mb-6 font-mono text-xs uppercase">Tactical Distribution</h4>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={completionData}
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {completionData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #1A1A1A' }}
+                itemStyle={{ color: '#EDEDED', fontSize: '12px' }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="flex justify-center gap-6 mt-4">
+             {completionData.map(d => (
+               <div key={d.name} className="flex items-center gap-2">
+                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                 <span className="text-[10px] font-mono text-text-secondary uppercase">{d.name}</span>
+               </div>
+             ))}
+          </div>
         </div>
       </div>
     </AppLayout>

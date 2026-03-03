@@ -1,6 +1,8 @@
 package com.clarity.clarity.controller;
 
 import com.clarity.clarity.dto.request.GoalRequest;
+import com.clarity.clarity.dto.response.GoalResponse;
+import com.clarity.clarity.dto.response.TaskResponse;
 import com.clarity.clarity.entity.Goal;
 import com.clarity.clarity.entity.Task;
 import com.clarity.clarity.service.GoalService;
@@ -21,17 +23,17 @@ public class GoalController {
     private final TaskService taskService;
 
     @GetMapping
-    public ResponseEntity<List<Goal>> getGoals() {
+    public ResponseEntity<List<GoalResponse>> getGoals() {
         return ResponseEntity.ok(goalService.getUserGoals());
     }
 
     @PostMapping
-    public ResponseEntity<Goal> createGoal(@RequestBody @Valid GoalRequest request) {
-        return ResponseEntity.ok(goalService.createGoal(request));
+    public ResponseEntity<GoalResponse> createGoal(@RequestBody @Valid GoalRequest request) {
+        Goal savedGoal = goalService.createGoal(request);
+        return ResponseEntity.ok(goalService.mapToResponse(savedGoal));
     }
-
     @GetMapping("/{id}/tasks")
-    public ResponseEntity<List<Task>> getTasksForGoal(@PathVariable Long id) {
+    public ResponseEntity<List<TaskResponse>> getTasksForGoal(@PathVariable Long id) {
         return ResponseEntity.ok(taskService.getTasksByGoal(id));
     }
 }

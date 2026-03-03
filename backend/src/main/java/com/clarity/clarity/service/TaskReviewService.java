@@ -51,7 +51,7 @@ public class TaskReviewService {
     public void reviewTask(Long taskId, ReviewRequest request) {
         Long userId = securityUtils.getCurrentUserId();
 
-        Task task = taskRepository.findByIdAndUserId(taskId, userId)
+        Task task = taskRepository.findByIdAndUserIdAndDeletedFalse(taskId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found or access denied"));
 
         if (!task.isNeedsReview()) {

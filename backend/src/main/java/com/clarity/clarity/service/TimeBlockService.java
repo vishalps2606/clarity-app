@@ -38,7 +38,7 @@ public class TimeBlockService {
         Long taskId = request.taskId();
         if (taskId == null) throw new IllegalArgumentException("Task ID is required");
 
-        Task task = taskRepository.findByIdAndUserId(taskId, userId)
+        Task task = taskRepository.findByIdAndUserIdAndDeletedFalse(taskId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found or access denied"));
 
         if (request.endTime().isBefore(request.startTime())) {
