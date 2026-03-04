@@ -114,7 +114,7 @@ public class TaskService {
     }
 
     private LocalDateTime calculateNextOccurrence(LocalDateTime current, RecurrenceType type, String pattern) {
-        return switch (type) {
+        LocalDateTime nextDate = switch (type) {
             case DAILY -> (pattern != null && !pattern.isEmpty())
                     ? findNextDayInPattern(current, pattern)
                     : current.plusDays(1);
@@ -122,6 +122,7 @@ public class TaskService {
             case MONTHLY -> current.plusMonths(1);
             default -> current;
         };
+        return nextDate.with(java.time.LocalTime.MAX);
     }
 
     private LocalDateTime findNextDayInPattern(LocalDateTime current, String pattern) {
@@ -175,14 +176,17 @@ public class TaskService {
 
     @Transactional
     public Task updateTask(Long id, TaskRequest request) {
-        Task task = getTaskById(id); // Reuses secure fetch
+        Task task = getTaskById(id);
 
         task.setTitle(request.title());
         task.setEstimatedMinutes(request.estimatedMinutes());
         if (request.actualMinutes() != null) task.setActualMinutes(request.actualMinutes());
         task.setDueDatetime(request.dueDatetime());
 
-        if (request.goalId() != null && !request.goalId().equals(task.getGoal().getId())) {
+        // HIDDEN BUG FIX: Safely check for existing goal ID
+        Long currentGoalId = task.getGoal() != null ? task.getGoal().getId() : null;
+
+        if (request.goalId() != null && !request.goalId().equals(currentGoalId)) {
             Goal newGoal = goalRepository.findByIdAndUserId(request.goalId(), securityUtils.getCurrentUserId())
                     .orElseThrow(() -> new IllegalArgumentException("Target goal not found"));
             task.setGoal(newGoal);
