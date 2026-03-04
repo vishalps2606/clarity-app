@@ -1,120 +1,170 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import AppLayout from '../layouts/AppLayout';
-import FocusTimer from '../components/FocusTimer';
-import api from '../api/client';
-import { ArrowLeft, CheckCircle, PauseCircle } from 'lucide-react';
-import Modal from '../components/Modal';
-import { Button } from '../components/Button';
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import AppLayout from "../layouts/AppLayout";
+import api from "../api/client";
+import {
+  Play,
+  Pause,
+  Square,
+  Zap,
+  Clock,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 
 export default function FocusMode() {
   const { taskId } = useParams();
   const navigate = useNavigate();
-  const [task, setTask] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  
-  const [showCompleteModal, setShowCompleteModal] = useState(false);
-  const [lastSessionMinutes, setLastSessionMinutes] = useState(0);
+  const queryClient = useQueryClient();
+
+  const { data: task, isLoading } = useQuery({
+    queryKey: ["task", taskId],
+    queryFn: async () => {
+      const res = await api.get(`/tasks/${taskId}`);
+      return res.data;
+    },
+  });
+
+  const [isActive, setIsActive] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [accumulatedTime, setAccumulatedTime] = useState(0);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    api.get('/tasks').then(res => {
-      const found = res.data.find((t: any) => t.id === Number(taskId));
-      if (found) setTask(found);
-      setLoading(false);
-    });
-  }, [taskId]);
+    if (isActive && startTime) {
+      timerRef.current = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setSeconds(accumulatedTime + elapsed);
+      }, 1000);
+    } else {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    };
+  }, [isActive, startTime, accumulatedTime]);
 
-  const handleTimerStop = async (minutesSpent: number) => {
-    const endTime = new Date();
-    const startTime = new Date(endTime.getTime() - minutesSpent * 60000);
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isActive && startTime) {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setSeconds(accumulatedTime + elapsed);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isActive, startTime, accumulatedTime]);
 
-    try {
-      await api.post(`/time-blocks`, {
-        taskId: task.id,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString()
-      });
-      
-      setLastSessionMinutes(minutesSpent);
-      setShowCompleteModal(true); 
-    } catch (err) {
-      alert("Failed to sync session.");
+  const toggleTimer = () => {
+    if (!isActive) {
+      setStartTime(Date.now());
+      setIsActive(true);
+    } else {
+      setAccumulatedTime(seconds);
+      setStartTime(null);
+      setIsActive(false);
     }
   };
 
-  const handleMarkComplete = async () => {
-    try {
-        await api.put(`/tasks/${taskId}/complete`);
-        navigate('/dashboard');
-    } catch (err) {
-        alert("Error completing task");
+  const logTimeMutation = useMutation({
+    mutationFn: (minutes: number) =>
+      api.post("/time-blocks", {
+        taskId: Number(taskId),
+        startTime: new Date(Date.now() - seconds * 1000).toISOString(),
+        endTime: new Date().toISOString(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["time-blocks"] });
+      navigate(-1); 
+    },
+  });
+
+  const handleFinish = () => {
+    const minutesEarned = Math.floor(seconds / 60);
+    if (minutesEarned > 0) {
+      logTimeMutation.mutate(minutesEarned);
+    } else {
+      navigate(-1); 
     }
   };
 
-  if (loading) return <div className="p-10 text-neon-blue">Initializing Neural Link...</div>;
-  if (!task) return <div className="p-10 text-neon-red">Objective Not Found.</div>;
+  const formatTime = (totalSeconds: number) => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${hrs > 0 ? hrs + ":" : ""}${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
-  const remainingMinutes = (task.estimatedMinutes || 60) - (task.actualMinutes || 0);
-  const startMinutes = remainingMinutes > 0 ? remainingMinutes : 0; 
+  if (isLoading)
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-full text-neon-blue font-mono">
+          <Loader2 className="animate-spin mr-2" /> ESTABLISHING NEURAL LINK...
+        </div>
+      </AppLayout>
+    );
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto text-center pt-10">
-        <button 
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-text-secondary hover:text-white mb-8 mx-auto"
-        >
-          <ArrowLeft size={16} /> Return to Base
-        </button>
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-text-secondary hover:text-white mb-8 transition-colors font-mono text-xs uppercase tracking-widest"
+      >
+        <ArrowLeft size={14} /> Abort Session
+      </button>
 
-        <div className="mb-10">
-          <h2 className="text-sm font-mono text-neon-purple uppercase tracking-widest mb-2">Current Objective</h2>
-          <h1 className="text-3xl font-bold text-text-primary">{task.title}</h1>
-          <p className="text-text-muted mt-2 font-mono text-sm">
-             Progress: {task.actualMinutes || 0} / {task.estimatedMinutes} min
-          </p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto text-center">
+        <div className="flex items-center gap-3 mb-6 bg-neon-blue/10 px-4 py-2 rounded-full border border-neon-blue/20">
+          <Zap className="text-neon-blue" fill="currentColor" size={16} />
+          <span className="text-neon-blue font-mono text-xs font-bold tracking-widest uppercase">
+            Focus Protocol Active
+          </span>
         </div>
 
-        <div className="bg-surface/50 border border-border rounded-xl p-8 shadow-2xl backdrop-blur-sm">
-          <FocusTimer 
-            durationMinutes={startMinutes === 0 ? 30 : startMinutes} // Default 30 if done
-            onComplete={handleTimerStop}
-          />
-        </div>
-        
-        {/* COMPLETION MODAL */}
-        <Modal 
-            isOpen={showCompleteModal} 
-            onClose={() => navigate('/dashboard')} 
-            title="SESSION REPORT"
-        >
-            <div className="text-center">
-                <p className="text-text-secondary mb-6">
-                    Session of <span className="text-neon-blue font-bold">{lastSessionMinutes}m</span> recorded. 
-                    <br/>What is the status of this objective?
-                </p>
-                
-                <div className="flex gap-4 justify-center">
-                    <Button 
-                        variant="outline" 
-                        onClick={() => navigate('/dashboard')}
-                        className="flex items-center gap-2"
-                    >
-                        <PauseCircle size={18} />
-                        Pause (Come back later)
-                    </Button>
-                    
-                    <Button 
-                        className="flex items-center gap-2 bg-neon-green text-black hover:bg-neon-green/80"
-                        onClick={handleMarkComplete}
-                    >
-                        <CheckCircle size={18} />
-                        Mission Complete
-                    </Button>
-                </div>
-            </div>
-        </Modal>
+        <h2 className="text-4xl md:text-5xl font-bold text-text-primary mb-2 uppercase tracking-tight">
+          {task?.title || "Unknown Objective"}
+        </h2>
 
+        <div className="flex items-center gap-2 text-text-secondary font-mono text-sm mb-12">
+          <Clock size={14} />
+          <span>
+            Previous allocation: {task?.actualMinutes || 0}m /{" "}
+            {task?.estimatedMinutes || 0}m
+          </span>
+        </div>
+
+        <div className="text-8xl md:text-9xl font-light font-mono text-text-primary tracking-tighter mb-16 tabular-nums">
+          {formatTime(seconds)}
+        </div>
+
+        <div className="flex items-center gap-8">
+          <button
+            onClick={toggleTimer}
+            className="w-20 h-20 rounded-full bg-surface border border-border flex items-center justify-center hover:border-neon-blue hover:bg-neon-blue/5 transition-all text-white"
+          >
+            {isActive ? (
+              <Pause size={32} fill="currentColor" />
+            ) : (
+              <Play size={32} fill="currentColor" className="ml-2" />
+            )}
+          </button>
+
+          <button
+            onClick={handleFinish}
+            disabled={logTimeMutation.isPending}
+            className="w-20 h-20 rounded-full bg-neon-green text-black flex items-center justify-center hover:scale-105 transition-all disabled:opacity-50"
+          >
+            {logTimeMutation.isPending ? (
+              <Loader2 className="animate-spin text-black" size={32} />
+            ) : (
+              <Square size={24} fill="currentColor" />
+            )}
+          </button>
+        </div>
       </div>
     </AppLayout>
   );

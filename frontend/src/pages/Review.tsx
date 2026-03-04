@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AppLayout from '../layouts/AppLayout';
 import api from '../api/client';
-import { ReviewCard } from '../components/ReviewCard';
+import ReviewCard from '../components/ReviewCard';
 import { RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function Review() {
