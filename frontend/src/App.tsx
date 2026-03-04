@@ -9,6 +9,7 @@ import Goals from "./pages/Goals";
 import Insights from "./pages/Insights";
 import Tasks from "./pages/Tasks";
 import GoalDetail from "./pages/GoalDetail";
+import Schedule from "./pages/Schedule";
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -46,7 +47,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      
+
       <Route
         path="/goals"
         element={
@@ -55,7 +56,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      
+
       <Route
         path="/goals/:goalId"
         element={
@@ -70,6 +71,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Insights />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route 
+        path="/schedule" 
+        element={
+          <ProtectedRoute>
+            <Schedule />
           </ProtectedRoute>
         }
       />
