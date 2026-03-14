@@ -265,46 +265,44 @@ export default function TaskDetailScreen() {
         )}
       </ScrollView>
 
+      {/* Footer Actions */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => setShowReminderPicker(true)}
+        {/* Reminder Button */}
+        <TouchableOpacity 
+            style={styles.actionBtn} 
+            onPress={() => setShowReminderPicker(true)}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Bell size={20} color="#BC13FE" />
-            <Text style={styles.actionText}>SET REMINDER</Text>
-          </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Bell size={20} color="#BC13FE" />
+                <Text style={styles.actionText}>SET REMINDER</Text>
+            </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() =>
-            navigation.navigate("FocusMode", {
-              taskId: taskId,
-              initialTitle: title,
-              currentActualMinutes: task.actualMinutes,
-            })
-          }
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Play size={20} color="#000" fill="#000" />
-            <Text style={styles.actionText}>ENGAGE FOCUS</Text>
-          </View>
-        </TouchableOpacity>
+        {/* LOGIC FIX: HIDE FOCUS BUTTON IF DONE */}
+        {task.status !== 'DONE' && (
+            <TouchableOpacity 
+                style={styles.actionBtn} 
+                onPress={() => navigation.navigate('FocusMode', { 
+                    taskId: taskId, 
+                    initialTitle: title,
+                    currentActualMinutes: task.actualMinutes 
+                })}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Play size={20} color="#000" fill="#000" />
+                    <Text style={styles.actionText}>ENGAGE FOCUS</Text>
+                </View>
+            </TouchableOpacity>
+        )}
 
-        <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <>
-              <Save size={20} color="#000" />
-              <Text style={styles.saveText}>SAVE CHANGES</Text>
-            </>
-          )}
+        {/* Save Button */}
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
+            {saving ? <ActivityIndicator color="#000" /> : (
+                <>
+                    <Save size={20} color="#000" />
+                    <Text style={styles.saveText}>SAVE CHANGES</Text>
+                </>
+            )}
         </TouchableOpacity>
       </View>
     </View>
